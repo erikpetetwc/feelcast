@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
   const secure = (process.env.AUTH_URL ?? "").startsWith("https");
   const baseUrl = `${secure ? "https" : "http"}://${host}`;
   const cookieName = secure
-    ? "__Secure-next-auth.session-token"
-    : "next-auth.session-token";
+    ? "__Secure-authjs.session-token"
+    : "authjs.session-token";
 
   // DEBUG — remove after diagnosing iPhone login failure
   console.log("[login] ct:", ct, "email:", email, "pw-len:", password.length, "host:", host, "baseUrl:", baseUrl);
