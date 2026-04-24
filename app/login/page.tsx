@@ -1,61 +1,67 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { TwcLogo } from "@/components/TwcLogo";
-import { credentialsSignIn } from "@/app/actions";
 
-export default function LoginPage() {
+function LoginPageInner() {
+  const searchParams = useSearchParams();
   const [mode, setMode] = useState<"login" | "register">("register");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [zip, setZip] = useState("");
   const [error, setError] = useState("");
-  const [step, setStep] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  useEffect(() => {
+    if (searchParams.get("error")) {
+      setMode("login");
+      setError("Invalid email or password");
+    }
+  }, [searchParams]);
+
+  // After successful register, submit a real form POST to /api/auth/login.
+  // A native form POST + server-side 303 redirect is the only approach that
+  // reliably commits Set-Cookie on iOS Safari before the next page loads.
+  function nativeLogin(emailVal: string, passwordVal: string) {
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = "/api/auth/login";
+    const e = document.createElement("input"); e.name = "email"; e.value = emailVal;
+    const p = document.createElement("input"); p.name = "password"; p.value = passwordVal;
+    form.append(e, p);
+    document.body.appendChild(form);
+    form.submit();
+  }
+
+  async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
     setError("");
-    setStep("");
+    // creating account
     setLoading(true);
-
     try {
-      if (mode === "register") {
-        setStep("Creating account…");
-        const res = await fetch("/api/auth/register", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, name, zip: zip || undefined }),
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setError(
-            res.status === 409
-              ? "That email is already registered — tap \"Sign in\" above."
-              : (data.error ?? "Registration failed. Please try again.")
-          );
-          setLoading(false);
-          setStep("");
-          return;
-        }
-      }
-
-      setStep("Signing in…");
-      const result = await credentialsSignIn(email, password);
-      if (result && "error" in result) {
-        setError(result.error);
-        setStep("");
+      const res = await fetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, name, zip: zip || undefined }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(
+          res.status === 409
+            ? "That email is already registered — tap \"Sign in\" above."
+            : (data.error ?? "Registration failed. Please try again.")
+        );
         setLoading(false);
-      } else {
-        // Hard navigate so iOS Safari commits the session cookie before loading /dashboard
-        window.location.href = "/dashboard";
+        return;
       }
-    } catch (err) {
+      nativeLogin(email, password);
+    } catch {
       setError("Something went wrong. Please check your connection and try again.");
-      setStep("");
       setLoading(false);
     }
   }
@@ -79,7 +85,7 @@ export default function LoginPage() {
         <div className="flex gap-1 p-1 bg-muted rounded-lg text-sm font-medium">
           <button
             type="button"
-            onClick={() => { setMode("register"); setError(""); setStep(""); }}
+            onClick={() => { setMode("register"); setError(""); }}
             className={cn(
               "flex-1 py-2 rounded-md transition-colors",
               mode === "register" ? "bg-white shadow-sm font-semibold" : "text-muted-foreground hover:text-foreground"
@@ -89,7 +95,7 @@ export default function LoginPage() {
           </button>
           <button
             type="button"
-            onClick={() => { setMode("login"); setError(""); setStep(""); }}
+            onClick={() => { setMode("login"); setError(""); }}
             className={cn(
               "flex-1 py-2 rounded-md transition-colors",
               mode === "login" ? "bg-white shadow-sm font-semibold" : "text-muted-foreground hover:text-foreground"
@@ -101,8 +107,8 @@ export default function LoginPage() {
 
         <Card>
           <CardContent className="pt-6 space-y-4">
-            <form onSubmit={handleSubmit} className="space-y-3">
-              {mode === "register" && (
+            {mode === "register" ? (
+              <form onSubmit={handleRegister} className="space-y-3">
                 <input
                   type="text"
                   placeholder="Your name (optional)"
@@ -110,26 +116,24 @@ export default function LoginPage() {
                   onChange={(e) => setName(e.target.value)}
                   className="w-full px-3 py-2 border rounded-md text-sm"
                 />
-              )}
-              <input
-                type="email"
-                placeholder="Email address"
-                required
-                autoComplete="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md text-sm"
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                required
-                autoComplete={mode === "register" ? "new-password" : "current-password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-3 py-2 border rounded-md text-sm"
-              />
-              {mode === "register" && (
+                <input
+                  type="email"
+                  placeholder="Email address"
+                  required
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                />
+                <input
+                  type="password"
+                  placeholder="Password"
+                  required
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                />
                 <div className="relative">
                   <input
                     type="text"
@@ -143,20 +147,46 @@ export default function LoginPage() {
                     for local weather
                   </span>
                 </div>
-              )}
-              {error && <p className="text-sm text-red-600">{error}</p>}
-              <Button type="submit" className="w-full" disabled={loading}>
-                {loading
-                  ? "Please wait…"
-                  : mode === "register"
-                  ? "Get started"
-                  : "Sign in"}
-              </Button>
-            </form>
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? "Please wait…" : "Get started"}
+                </Button>
+              </form>
+            ) : (
+              // Native HTML form POST → server-side 303 redirect → reliable cookie on iOS
+              <form method="POST" action="/api/auth/login" className="space-y-3">
+                {error && <p className="text-sm text-red-600">{error}</p>}
+                <input
+                  type="email"
+                  name="email"
+                  placeholder="Email address"
+                  required
+                  autoComplete="email"
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                />
+                <input
+                  type="password"
+                  name="password"
+                  placeholder="Password"
+                  required
+                  autoComplete="current-password"
+                  className="w-full px-3 py-2 border rounded-md text-sm"
+                />
+                <Button type="submit" className="w-full">Sign in</Button>
+              </form>
+            )}
           </CardContent>
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginPageInner />
+    </Suspense>
   );
 }
 
