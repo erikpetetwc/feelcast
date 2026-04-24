@@ -23,7 +23,7 @@ sudo apt-get install -y -qq git curl postgresql postgresql-contrib
 # ── Node.js 20 ────────────────────────────────────────────────────────────────
 if ! command -v node &>/dev/null; then
   echo "→ Installing Node.js 20..."
-  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash - -qq
+  curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
   sudo apt-get install -y -qq nodejs
 else
   echo "→ Node.js already installed ($(node -v))"
