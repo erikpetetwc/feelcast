@@ -45,7 +45,7 @@ export default function LoginPage() {
 
       setStep("Signing in…");
       const result = await credentialsSignIn(email, password);
-      if (result?.error) {
+      if (result && "error" in result) {
         setError(result.error);
         setStep("");
         setLoading(false);
