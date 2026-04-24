@@ -8,7 +8,8 @@ export async function POST(req: NextRequest) {
   if (!email || !password) {
     return NextResponse.json({ error: "Email and password required" }, { status: 400 });
   }
-  const existing = await db.user.findUnique({ where: { email } });
+  const normalizedEmail = email.toLowerCase();
+  const existing = await db.user.findUnique({ where: { email: normalizedEmail } });
   if (existing) {
     return NextResponse.json({ error: "Email already registered" }, { status: 409 });
   }
@@ -26,7 +27,7 @@ export async function POST(req: NextRequest) {
   }
 
   const user = await db.user.create({
-    data: { email, password: hashed, name: name?.trim() || null, location: location ?? undefined },
+    data: { email: normalizedEmail, password: hashed, name: name?.trim() || null, location: location ?? undefined },
   });
   return NextResponse.json({ id: user.id, email: user.email, location });
 }
