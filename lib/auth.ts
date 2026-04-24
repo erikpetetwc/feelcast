@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   trustHost: true,
-  useSecureCookies: process.env.NODE_ENV === "production",
+  useSecureCookies: (process.env.AUTH_URL ?? "").startsWith("https"),
   providers: [
     Credentials({
       credentials: {
