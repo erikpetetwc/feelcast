@@ -314,9 +314,16 @@ export default function DashboardPage() {
                               "text-orange-500": dayRisk === "HIGH",
                               "text-red-600": dayRisk === "VERY HIGH",
                             })}>{riskLabel}</span>
-                            {conditions && conditions.length > 0 && (
-                              <span className="text-[8px] leading-none text-muted-foreground/70 mt-0.5">
-                                {elevatedCount > 0 ? `${elevatedCount}↑` : "✓"}
+                            {conditions && conditions.length > 0 && elevatedCount > 0 && (
+                              <span className={cn(
+                                "text-[9px] font-semibold leading-none px-1 py-0.5 rounded-full mt-0.5",
+                                {
+                                  "bg-yellow-100 text-yellow-700": dayRisk === "MODERATE",
+                                  "bg-orange-100 text-orange-700": dayRisk === "HIGH",
+                                  "bg-red-100 text-red-700": dayRisk === "VERY HIGH",
+                                }
+                              )}>
+                                {elevatedCount}
                               </span>
                             )}
                           </div>
