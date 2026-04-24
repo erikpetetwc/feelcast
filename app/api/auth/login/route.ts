@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
   };
 
   try {
-    const user = await db.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
+    const user = await db.user.findUnique({ where: { email } });
     console.log("[login] user found:", !!user, "has password:", !!user?.password);
     if (!user?.password) return makeError("nouser");
     const pwOk = await bcrypt.compare(password, user.password);
