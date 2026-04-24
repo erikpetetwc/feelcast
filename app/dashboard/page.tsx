@@ -382,6 +382,12 @@ export default function DashboardPage() {
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-yellow-400 inline-block" /> Moderate</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-400 inline-block" /> High</span>
                     <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500 inline-block" /> Very High</span>
+                    {conditions && conditions.length > 0 && (
+                      <span className="flex items-center gap-1">
+                        <span className="text-[9px] font-semibold bg-red-100 text-red-700 px-1 py-0.5 rounded-full">2</span>
+                        = your conditions affected
+                      </span>
+                    )}
                   </p>
                 </CardContent>
               </Card>
