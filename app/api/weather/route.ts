@@ -19,6 +19,9 @@ export async function GET(req: NextRequest) {
     getAirQuality(lat, lon),
   ]);
 
+  if (hourly.status === "rejected") console.error("[weather] hourly failed:", hourly.reason);
+  if (airQuality.status === "rejected") console.error("[weather] airQuality failed:", airQuality.reason);
+
   return NextResponse.json({
     obs: obs.status === "fulfilled" ? obs.value : null,
     forecast: forecast.status === "fulfilled" ? forecast.value : null,
