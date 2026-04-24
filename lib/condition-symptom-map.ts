@@ -92,19 +92,40 @@ const RISK_GROUP_TO_SYMPTOM: Record<RiskGroup, string> = {
   uv: "Sun Fatigue",
 };
 
-/** Personalize risks based on saved symptom IDs (new model) */
-export function personalizeRisksBySymptoms(symptomIds: string[], genericRisks: BodyRisk[]): BodyRisk[] {
+/**
+ * Personalize risks based on saved symptom IDs — one entry per symptom with
+ * the user's own label and icon. Pass SYMPTOM_BY_ID as symptomMeta.
+ */
+export function personalizeRisksBySymptoms(
+  symptomIds: string[],
+  genericRisks: BodyRisk[],
+  symptomMeta: Record<string, { label: string; icon: string }>,
+): BodyRisk[] {
   if (symptomIds.length === 0) return genericRisks;
-  const byName = new Map(genericRisks.map((r) => [r.symptom, r]));
-  const relevantGroups = new Set<RiskGroup>();
+
+  const byGroup = new Map<RiskGroup, BodyRisk>(
+    (Object.entries(RISK_GROUP_TO_SYMPTOM) as [RiskGroup, string][])
+      .map(([group, name]) => {
+        const r = genericRisks.find((x) => x.symptom === name);
+        return r ? ([group, r] as [RiskGroup, BodyRisk]) : null;
+      })
+      .filter((x): x is [RiskGroup, BodyRisk] => x !== null)
+  );
+
+  const result: BodyRisk[] = [];
   for (const id of symptomIds) {
-    for (const g of (SYMPTOM_TO_RISK_GROUPS[id] ?? [])) relevantGroups.add(g);
+    const meta = symptomMeta[id];
+    if (!meta) continue;
+    const groups: RiskGroup[] = SYMPTOM_TO_RISK_GROUPS[id] ?? [];
+    let best: BodyRisk | null = null;
+    for (const group of groups) {
+      const r = byGroup.get(group);
+      if (r && (!best || RISK_ORDER[r.risk] > RISK_ORDER[best.risk])) best = r;
+    }
+    if (best) result.push({ ...best, symptom: meta.label, icon: meta.icon });
   }
-  if (relevantGroups.size === 0) return genericRisks;
-  return [...relevantGroups]
-    .map((g) => byName.get(RISK_GROUP_TO_SYMPTOM[g]))
-    .filter((r): r is BodyRisk => r !== undefined)
-    .sort((a, b) => RISK_ORDER[b.risk] - RISK_ORDER[a.risk]);
+
+  return result.sort((a, b) => RISK_ORDER[b.risk] - RISK_ORDER[a.risk]);
 }
 
 /** Map user conditions to personalized BodyRisk rows for the dashboard */

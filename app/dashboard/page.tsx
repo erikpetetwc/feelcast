@@ -174,7 +174,7 @@ export default function DashboardPage() {
   const risks = todayLog
     ? scoreLoggedSymptoms(todayLog.symptoms, genericRisks, SYMPTOM_BY_ID)
     : conditions && conditions.length > 0
-    ? personalizeRisksBySymptoms(conditions, genericRisks)
+    ? personalizeRisksBySymptoms(conditions, genericRisks, SYMPTOM_BY_ID)
     : genericRisks;
 
   if (status === "loading") return null;
@@ -274,7 +274,7 @@ export default function DashboardPage() {
                         pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
                       });
                       const dayRisks = conditions && conditions.length > 0
-                        ? personalizeRisksBySymptoms(conditions, genericDay)
+                        ? personalizeRisksBySymptoms(conditions, genericDay, SYMPTOM_BY_ID)
                         : genericDay;
                       const dayRisk = worstRisk(dayRisks.map(r => r.risk));
                       const dotClass = riskDot(dayRisk);
@@ -332,7 +332,7 @@ export default function DashboardPage() {
                       pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
                     });
                     const dayRisks = conditions && conditions.length > 0
-                      ? personalizeRisksBySymptoms(conditions, genericDay)
+                      ? personalizeRisksBySymptoms(conditions, genericDay, SYMPTOM_BY_ID)
                       : genericDay;
                     const dayRisk = worstRisk(dayRisks.map(r => r.risk));
                     const elevated = dayRisks.filter(r => r.risk !== "LOW");
