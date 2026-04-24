@@ -37,10 +37,13 @@ sudo -u postgres psql -q <<SQL
 DO \$\$ BEGIN
   IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'feelcast') THEN
     CREATE USER feelcast WITH PASSWORD '${DB_PASS}';
+  ELSE
+    ALTER USER feelcast WITH PASSWORD '${DB_PASS}';
   END IF;
 END \$\$;
 SQL
 sudo -u postgres psql -q -c "CREATE DATABASE feelcast OWNER feelcast;" 2>/dev/null || true
+sudo -u postgres psql -q -c "GRANT ALL PRIVILEGES ON DATABASE feelcast TO feelcast;" 2>/dev/null || true
 
 # ── Clone / update repo ───────────────────────────────────────────────────────
 if [ -d "$HOME/feelcast/.git" ]; then
