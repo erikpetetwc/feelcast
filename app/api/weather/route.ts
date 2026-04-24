@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentObs, getDailyForecast, getAchePainIndex, getBreathingIndex, getPollenIndex, getHourlyForecast, getAirQuality } from "@/lib/twc";
+import { getCurrentObs, getDailyForecast, getAchePainIndex, getBreathingIndex, getPollenIndex } from "@/lib/twc";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -9,18 +9,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "lat and lon required" }, { status: 400 });
   }
 
-  const [obs, forecast, achePain, breathing, pollen, hourly, airQuality] = await Promise.allSettled([
+  const [obs, forecast, achePain, breathing, pollen] = await Promise.allSettled([
     getCurrentObs(lat, lon),
     getDailyForecast(lat, lon),
     getAchePainIndex(lat, lon),
     getBreathingIndex(lat, lon),
     getPollenIndex(lat, lon),
-    getHourlyForecast(lat, lon),
-    getAirQuality(lat, lon),
   ]);
-
-  if (hourly.status === "rejected") console.error("[weather] hourly failed:", hourly.reason);
-  if (airQuality.status === "rejected") console.error("[weather] airQuality failed:", airQuality.reason);
 
   return NextResponse.json({
     obs: obs.status === "fulfilled" ? obs.value : null,
@@ -28,7 +23,5 @@ export async function GET(req: NextRequest) {
     achePain: achePain.status === "fulfilled" ? achePain.value : null,
     breathing: breathing.status === "fulfilled" ? breathing.value : null,
     pollen: pollen.status === "fulfilled" ? pollen.value : null,
-    hourly: hourly.status === "fulfilled" ? hourly.value : null,
-    airQuality: airQuality.status === "fulfilled" ? airQuality.value : null,
   });
 }
