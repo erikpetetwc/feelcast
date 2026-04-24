@@ -279,6 +279,7 @@ export default function DashboardPage() {
                       const dayRisk = worstRisk(dayRisks.map(r => r.risk));
                       const dotClass = riskDot(dayRisk);
                       const riskLabel = dayRisk === "LOW" ? "Low" : dayRisk === "MODERATE" ? "Mod" : dayRisk === "HIGH" ? "High" : "V.Hi";
+                      const elevatedCount = dayRisks.filter(r => r.risk !== "LOW").length;
                       const isSelected = selectedForecastDay === i;
 
                       return (
@@ -313,6 +314,11 @@ export default function DashboardPage() {
                               "text-orange-500": dayRisk === "HIGH",
                               "text-red-600": dayRisk === "VERY HIGH",
                             })}>{riskLabel}</span>
+                            {conditions && conditions.length > 0 && (
+                              <span className="text-[8px] leading-none text-muted-foreground/70 mt-0.5">
+                                {elevatedCount > 0 ? `${elevatedCount}↑` : "✓"}
+                              </span>
+                            )}
                           </div>
                         </button>
                       );
