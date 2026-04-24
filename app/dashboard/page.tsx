@@ -253,6 +253,7 @@ export default function DashboardPage() {
               locationLabel={location?.label}
               temperature={weather.obs?.temperature}
               condition={weather.obs?.wxPhraseLong}
+              personalized={!!todayLog || (!!conditions && conditions.length > 0)}
             />
 
             {weather.forecast && (

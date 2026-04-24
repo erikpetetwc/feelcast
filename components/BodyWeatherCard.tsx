@@ -8,12 +8,14 @@ interface Props {
   locationLabel?: string;
   temperature?: number | null;
   condition?: string | null;
+  personalized?: boolean;
 }
 
 const RISK_LEVELS: RiskLevel[] = ["VERY HIGH", "HIGH", "MODERATE", "LOW"];
 
-export function BodyWeatherCard({ risks, locationLabel, temperature, condition }: Props) {
+export function BodyWeatherCard({ risks, locationLabel, temperature, condition, personalized }: Props) {
   const elevated = risks.filter((r) => r.risk !== "LOW");
+  const low = risks.filter((r) => r.risk === "LOW");
   const groups = RISK_LEVELS
     .map((level) => ({ level, items: risks.filter((r) => r.risk === level) }))
     .filter((g) => g.items.length > 0 && g.level !== "LOW");
@@ -36,7 +38,7 @@ export function BodyWeatherCard({ risks, locationLabel, temperature, condition }
         )}
       </CardHeader>
       <CardContent>
-        {elevated.length === 0 ? (
+        {elevated.length === 0 && !personalized ? (
           <div className="flex items-center gap-3 py-1">
             <span className="text-2xl">✅</span>
             <div>
@@ -46,6 +48,15 @@ export function BodyWeatherCard({ risks, locationLabel, temperature, condition }
           </div>
         ) : (
           <div className="space-y-4">
+            {elevated.length === 0 && personalized && (
+              <div className="flex items-center gap-3 py-1">
+                <span className="text-2xl">✅</span>
+                <div>
+                  <p className="text-sm font-medium">All clear today</p>
+                  <p className="text-xs text-muted-foreground">No elevated impacts for your conditions</p>
+                </div>
+              </div>
+            )}
             {groups.map(({ level, items }) => (
               <div key={level}>
                 <div className="mb-2">
@@ -64,6 +75,20 @@ export function BodyWeatherCard({ risks, locationLabel, temperature, condition }
                 </div>
               </div>
             ))}
+            {personalized && low.length > 0 && (
+              <div className={elevated.length > 0 ? "border-t pt-3" : undefined}>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Favorable today</p>
+                <div className="space-y-1">
+                  {low.map((r) => (
+                    <div key={r.symptom} className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="text-base leading-none">{r.icon}</span>
+                      <span>{r.symptom}</span>
+                      <span className="ml-auto text-green-600 font-medium">✓ Low</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
