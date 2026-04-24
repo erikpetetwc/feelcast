@@ -1,6 +1,6 @@
 import { type BodyRisk, type RiskLevel, RISK_ORDER } from "./body-score";
 
-export type RiskGroup = "ache" | "breathing" | "pollen" | "pressure" | "uv";
+export type RiskGroup = "ache" | "breathing" | "pollen" | "pressure" | "uv" | "drySkin" | "airQuality";
 
 export interface ConditionProfile {
   label: string;
@@ -38,13 +38,13 @@ export const CONDITION_MAP: Record<string, ConditionProfile> = {
     label: "Asthma",
     icon: "🫁",
     symptoms: ["asthma_flare", "breathing"],
-    riskGroups: ["breathing", "pollen"],
+    riskGroups: ["breathing", "pollen", "airQuality"],
   },
   copd: {
     label: "COPD",
     icon: "💨",
     symptoms: ["breathing", "fatigue"],
-    riskGroups: ["breathing"],
+    riskGroups: ["breathing", "airQuality"],
   },
   lupus: {
     label: "Lupus",
@@ -74,7 +74,7 @@ export const CONDITION_MAP: Record<string, ConditionProfile> = {
     label: "Eczema / Psoriasis",
     icon: "🧴",
     symptoms: ["eczema_flare", "skin"],
-    riskGroups: ["uv"],
+    riskGroups: ["uv", "drySkin"],
   },
   ibd: {
     label: "IBD / Crohn's",
@@ -90,6 +90,8 @@ const RISK_GROUP_TO_SYMPTOM: Record<RiskGroup, string> = {
   pollen: "Allergy / Sinus",
   pressure: "Headache / Migraine",
   uv: "Sun Fatigue",
+  drySkin: "Dry Skin",
+  airQuality: "Air Quality",
 };
 
 /**
@@ -182,8 +184,8 @@ const SYMPTOM_TO_RISK_GROUPS: Record<string, RiskGroup[]> = {
   mood: ["pressure"],
   anxiety: ["pressure"],
   // Skin & Other
-  skin: ["uv"],
-  eczema_flare: ["uv"],
+  skin: ["uv", "drySkin"],
+  eczema_flare: ["uv", "drySkin"],
   nausea: ["pressure"],
   swelling: ["ache"],
 };

@@ -55,6 +55,37 @@ export function worstRisk(risks: RiskLevel[]): RiskLevel {
   return risks.reduce((a, b) => RISK_ORDER[a] >= RISK_ORDER[b] ? a : b, "LOW" as RiskLevel);
 }
 
+export function aqiToRisk(aqi: number | null | undefined): RiskLevel {
+  if (aqi == null) return "LOW";
+  if (aqi <= 50) return "LOW";
+  if (aqi <= 100) return "MODERATE";
+  if (aqi <= 150) return "HIGH";
+  return "VERY HIGH";
+}
+
+export function aqiLabel(aqi: number | null | undefined): string {
+  if (aqi == null) return "Unknown";
+  if (aqi <= 50) return "Good";
+  if (aqi <= 100) return "Moderate";
+  if (aqi <= 150) return "Unhealthy (Sensitive)";
+  if (aqi <= 200) return "Unhealthy";
+  return "Very Unhealthy";
+}
+
+export function scoreHour(params: {
+  temp: number | null;
+  uv: number | null;
+  precip: number | null;
+  aqi?: number | null;
+}): RiskLevel {
+  const uvRisk: RiskLevel = (params.uv ?? 0) >= 8 ? "HIGH" : (params.uv ?? 0) >= 6 ? "MODERATE" : "LOW";
+  const precipRisk: RiskLevel = (params.precip ?? 0) >= 70 ? "HIGH" : (params.precip ?? 0) >= 40 ? "MODERATE" : "LOW";
+  const t = params.temp;
+  const tempRisk: RiskLevel = t != null ? (t <= 20 || t >= 100 ? "HIGH" : t <= 35 || t >= 90 ? "MODERATE" : "LOW") : "LOW";
+  const aqiRisk = aqiToRisk(params.aqi);
+  return worstRisk([uvRisk, precipRisk, tempRisk, aqiRisk]);
+}
+
 export function scoreFromIndices(params: {
   achePainCategory?: string | null;
   achePainIndex?: number | null;
@@ -62,6 +93,9 @@ export function scoreFromIndices(params: {
   breathingIndex?: number | null;
   pollenCategory?: string | null;
   pollenIndex?: number | null;
+  drySkinCategory?: string | null;
+  drySkinIndex?: number | null;
+  airQualityIndex?: number | null;
   pressureChange?: number | null;
   uvIndex?: number | null;
   temperature?: number | null;
@@ -143,36 +177,29 @@ export function scoreFromIndices(params: {
     index: uvIndex100,
   });
 
+  // ── Dry Skin (TWC index) ───────────────────────────────────────────────────
+  const drySkin = categoryToRisk(params.drySkinCategory);
+  risks.push({
+    symptom: "Dry Skin",
+    risk: drySkin,
+    icon: "🧴",
+    reason: descForCategory(params.drySkinCategory, "dry skin conditions"),
+    index: params.drySkinIndex ?? undefined,
+  });
+
+  // ── Air Quality (AQI) ──────────────────────────────────────────────────────
+  if (params.airQualityIndex != null) {
+    const aqiRisk = aqiToRisk(params.airQualityIndex);
+    risks.push({
+      symptom: "Air Quality",
+      risk: aqiRisk,
+      icon: "💨",
+      reason: `AQI ${params.airQualityIndex} — ${aqiLabel(params.airQualityIndex)}`,
+      index: params.airQualityIndex,
+    });
+  }
+
   return risks.sort((a, b) => RISK_ORDER[b.risk] - RISK_ORDER[a.risk]);
-}
-
-export function aqiToRisk(aqi: number | null | undefined): RiskLevel {
-  if (aqi == null) return "LOW";
-  if (aqi <= 50) return "LOW";
-  if (aqi <= 100) return "MODERATE";
-  if (aqi <= 150) return "HIGH";
-  return "VERY HIGH";
-}
-
-export function aqiLabel(aqi: number | null | undefined): string {
-  if (aqi == null) return "Unknown";
-  if (aqi <= 50) return "Good";
-  if (aqi <= 100) return "Moderate";
-  if (aqi <= 150) return "Unhealthy (Sensitive)";
-  if (aqi <= 200) return "Unhealthy";
-  return "Very Unhealthy";
-}
-
-export function scoreHour(params: {
-  temp: number | null;
-  uv: number | null;
-  precip: number | null;
-}): RiskLevel {
-  const uvRisk: RiskLevel = (params.uv ?? 0) >= 8 ? "HIGH" : (params.uv ?? 0) >= 6 ? "MODERATE" : "LOW";
-  const precipRisk: RiskLevel = (params.precip ?? 0) >= 70 ? "HIGH" : (params.precip ?? 0) >= 40 ? "MODERATE" : "LOW";
-  const t = params.temp;
-  const tempRisk: RiskLevel = t != null ? (t <= 20 || t >= 100 ? "HIGH" : t <= 35 || t >= 90 ? "MODERATE" : "LOW") : "LOW";
-  return worstRisk([uvRisk, precipRisk, tempRisk]);
 }
 
 function pressureReason(pressureChange: number): string {

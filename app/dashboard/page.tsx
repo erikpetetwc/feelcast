@@ -6,7 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { BodyWeatherCard } from "@/components/BodyWeatherCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { scoreFromIndices, worstRisk, riskDot, type BodyRisk, type RiskLevel } from "@/lib/body-score";
+import { scoreFromIndices, worstRisk, riskDot, aqiToRisk, aqiLabel, scoreHour, type BodyRisk, type RiskLevel } from "@/lib/body-score";
 import { personalizeRisksBySymptoms, scoreLoggedSymptoms } from "@/lib/condition-symptom-map";
 import { SYMPTOM_BY_ID } from "@/lib/symptoms";
 import { cn } from "@/lib/utils";
@@ -34,9 +34,72 @@ interface WeatherData {
   achePain: { index: (number | null)[]; category: (string | null)[] } | null;
   breathing: { index: (number | null)[]; category: (string | null)[] } | null;
   pollen: { index: (number | null)[]; category: (string | null)[] } | null;
+  drySkin: { index: (number | null)[]; category: (string | null)[] } | null;
+  hourly: { validTimeLocal: string[]; temperature: (number | null)[]; uvIndex: (number | null)[]; precipChance: (number | null)[] } | null;
+  airQuality: { airQualityIndex: number | null; category: string | null; primaryPollutant: string | null } | null;
 }
 
 type StoredLocation = { lat: number; lon: number; label: string };
+
+function HourlyFeelCard({ hourly, airQuality }: {
+  hourly: { validTimeLocal: string[]; temperature: (number | null)[]; uvIndex: (number | null)[]; precipChance: (number | null)[] };
+  airQuality: { airQualityIndex: number | null; category: string | null; primaryPollutant: string | null } | null;
+}) {
+  const nowHour = new Date().getHours();
+  const aqi = airQuality?.airQualityIndex;
+  const aqiRisk = aqiToRisk(aqi);
+  const aqiBadgeClass = { LOW: "bg-green-100 text-green-700", MODERATE: "bg-yellow-100 text-yellow-700", HIGH: "bg-orange-100 text-orange-700", "VERY HIGH": "bg-red-100 text-red-700" }[aqiRisk];
+
+  const slots = hourly.validTimeLocal
+    .map((t, i) => ({ t, i, hour: parseInt(t.slice(11, 13), 10) }))
+    .filter(({ t }) => new Date(t) >= new Date(new Date().setMinutes(0, 0, 0)))
+    .slice(0, 12);
+
+  function fmt(t: string) {
+    const h = parseInt(t.slice(11, 13), 10);
+    if (h === nowHour) return "Now";
+    return `${h % 12 === 0 ? 12 : h % 12}${h >= 12 ? "PM" : "AM"}`;
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base">Today by the Hour</CardTitle>
+          {aqi != null && (
+            <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", aqiBadgeClass)}>
+              AQI {aqi} · {aqiLabel(aqi)}
+            </span>
+          )}
+        </div>
+        {airQuality?.primaryPollutant && (
+          <p className="text-xs text-muted-foreground">Primary pollutant: {airQuality.primaryPollutant}</p>
+        )}
+      </CardHeader>
+      <CardContent>
+        <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+          {slots.map(({ t, i }) => {
+            const risk = scoreHour({ temp: hourly.temperature[i], uv: hourly.uvIndex[i], precip: hourly.precipChance[i], aqi });
+            const dot = riskDot(risk);
+            const labelColor = { LOW: "text-green-600", MODERATE: "text-yellow-600", HIGH: "text-orange-500", "VERY HIGH": "text-red-600" }[risk];
+            return (
+              <div key={i} className="flex flex-col items-center gap-0.5 min-w-[2.75rem] text-center shrink-0">
+                <span className="text-[10px] font-medium text-muted-foreground">{fmt(t)}</span>
+                <span className="text-sm font-semibold">{hourly.temperature[i] != null ? `${hourly.temperature[i]}°` : "–"}</span>
+                <span className="text-[10px] text-blue-500 h-3">{(hourly.precipChance[i] ?? 0) > 0 ? `${hourly.precipChance[i]}%` : ""}</span>
+                <span className={cn("w-2.5 h-2.5 rounded-full", dot)} />
+                <span className={cn("text-[9px] font-medium leading-none", labelColor)}>
+                  {risk === "LOW" ? "Low" : risk === "MODERATE" ? "Mod" : risk === "HIGH" ? "High" : "V.Hi"}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">Feel rating based on UV, precipitation, and temperature.</p>
+      </CardContent>
+    </Card>
+  );
+}
 
 const GENERIC_LABELS = new Set(["your location", "my location", ""]);
 
@@ -163,6 +226,9 @@ export default function DashboardPage() {
         breathingIndex: weather.breathing?.index?.[0] ?? null,
         pollenCategory: weather.pollen?.category?.[0] ?? null,
         pollenIndex: weather.pollen?.index?.[0] ?? null,
+        drySkinCategory: weather.drySkin?.category?.[0] ?? null,
+        drySkinIndex: weather.drySkin?.index?.[0] ?? null,
+        airQualityIndex: weather.airQuality?.airQualityIndex ?? null,
         pressureChange: weather.obs?.pressureChange ?? null,
         uvIndex: weather.obs?.uvIndex ?? null,
         temperature: weather.obs?.temperature ?? null,
@@ -255,6 +321,10 @@ export default function DashboardPage() {
               condition={weather.obs?.wxPhraseLong}
               personalized={!!todayLog || (!!conditions && conditions.length > 0)}
             />
+
+            {weather.hourly && weather.hourly.validTimeLocal.length > 0 && (
+              <HourlyFeelCard hourly={weather.hourly} airQuality={weather.airQuality ?? null} />
+            )}
 
             {weather.forecast && (
               <Card className="overflow-visible">
