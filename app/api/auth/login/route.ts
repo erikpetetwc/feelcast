@@ -27,18 +27,24 @@ export async function POST(req: NextRequest) {
     ? "__Secure-next-auth.session-token"
     : "next-auth.session-token";
 
-  const makeError = () => {
+  // DEBUG — remove after diagnosing iPhone login failure
+  console.log("[login] ct:", ct, "email:", email, "pw-len:", password.length, "host:", host, "baseUrl:", baseUrl);
+
+  const makeError = (code: string) => {
+    console.log("[login] error:", code);
     if (ct.includes("application/json")) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/login?error=1", baseUrl), { status: 303 });
+    return NextResponse.redirect(new URL(`/login?error=${code}`, baseUrl), { status: 303 });
   };
 
   try {
     const user = await db.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } } });
-    if (!user?.password || !(await bcrypt.compare(password, user.password))) {
-      return makeError();
-    }
+    console.log("[login] user found:", !!user, "has password:", !!user?.password);
+    if (!user?.password) return makeError("nouser");
+    const pwOk = await bcrypt.compare(password, user.password);
+    console.log("[login] bcrypt result:", pwOk);
+    if (!pwOk) return makeError("badpw");
 
     // Encode using same algorithm + salt as NextAuth so auth() can decode it
     const token = await encode({
@@ -61,6 +67,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Form POST — server-side redirect so browser commits cookie before loading /dashboard
+    console.log("[login] success, redirecting to", baseUrl + "/dashboard");
     const res = NextResponse.redirect(new URL("/dashboard", baseUrl), { status: 303 });
     res.cookies.set(cookieName, token, {
       httpOnly: true,
@@ -70,7 +77,8 @@ export async function POST(req: NextRequest) {
       maxAge: 30 * 24 * 60 * 60,
     });
     return res;
-  } catch {
-    return makeError();
+  } catch (err) {
+    console.error("[login] exception:", err);
+    return makeError("exception");
   }
 }

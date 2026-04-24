@@ -18,9 +18,15 @@ function LoginPageInner() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (searchParams.get("error")) {
+    const e = searchParams.get("error");
+    if (e) {
       setMode("login");
-      setError("Invalid email or password");
+      setError(
+        e === "nouser" ? "No account found with that email" :
+        e === "badpw" ? "Password incorrect" :
+        e === "exception" ? "Server error — check Pi logs" :
+        "Invalid email or password"
+      );
     }
   }, [searchParams]);
 
