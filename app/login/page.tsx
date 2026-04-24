@@ -9,7 +9,7 @@ import { TwcLogo } from "@/components/TwcLogo";
 
 function LoginPageInner() {
   const searchParams = useSearchParams();
-  const [mode, setMode] = useState<"login" | "register">("register");
+  const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");

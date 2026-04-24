@@ -18,8 +18,11 @@ export async function POST(req: NextRequest) {
     password = (fd.get("password") as string) ?? "";
   }
 
-  const authUrl = process.env.AUTH_URL ?? `http://${req.headers.get("host")}`;
-  const secure = authUrl.startsWith("https");
+  // Always derive base URL from the incoming request host so redirects work
+  // regardless of what AUTH_URL is set to (e.g. localhost on the Pi).
+  const host = req.headers.get("host") ?? "localhost:3000";
+  const secure = (process.env.AUTH_URL ?? "").startsWith("https");
+  const baseUrl = `${secure ? "https" : "http"}://${host}`;
   const cookieName = secure
     ? "__Secure-next-auth.session-token"
     : "next-auth.session-token";
@@ -28,7 +31,7 @@ export async function POST(req: NextRequest) {
     if (ct.includes("application/json")) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
-    return NextResponse.redirect(new URL("/login?error=1", authUrl), { status: 303 });
+    return NextResponse.redirect(new URL("/login?error=1", baseUrl), { status: 303 });
   };
 
   try {
@@ -58,7 +61,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Form POST — server-side redirect so browser commits cookie before loading /dashboard
-    const res = NextResponse.redirect(new URL("/dashboard", authUrl), { status: 303 });
+    const res = NextResponse.redirect(new URL("/dashboard", baseUrl), { status: 303 });
     res.cookies.set(cookieName, token, {
       httpOnly: true,
       sameSite: "lax",
