@@ -146,6 +146,62 @@ function worstCategory(cats: string[]): string {
   return best;
 }
 
+export interface HourlyForecast {
+  validTimeLocal: string[];
+  temperature: (number | null)[];
+  uvIndex: (number | null)[];
+  precipChance: (number | null)[];
+  wxPhraseLong: (string | null)[];
+  iconCode: (number | null)[];
+  relativeHumidity: (number | null)[];
+}
+
+export interface AirQuality {
+  airQualityIndex: number | null;
+  category: string | null;
+  primaryPollutant: string | null;
+}
+
+export async function getHourlyForecast(lat: number, lon: number): Promise<HourlyForecast> {
+  const res = await fetch(
+    url("/v3/wx/forecast/hourly/24hour", {
+      geocode: `${lat},${lon}`,
+      language: "en-US",
+      units: "e",
+    }),
+    { next: { revalidate: 1800 } }
+  );
+  if (!res.ok) throw new Error(`TWC hourly forecast failed: ${res.status}`);
+  const data = await res.json();
+  return {
+    validTimeLocal: data.validTimeLocal ?? [],
+    temperature: data.temperature ?? [],
+    uvIndex: data.uvIndex ?? [],
+    precipChance: data.precipChance ?? [],
+    wxPhraseLong: data.wxPhraseLong ?? [],
+    iconCode: data.iconCode ?? [],
+    relativeHumidity: data.relativeHumidity ?? [],
+  };
+}
+
+export async function getAirQuality(lat: number, lon: number): Promise<AirQuality> {
+  const res = await fetch(
+    url("/v3/wx/airquality", {
+      geocode: `${lat},${lon}`,
+      language: "en-US",
+    }),
+    { next: { revalidate: 3600 } }
+  );
+  if (!res.ok) throw new Error(`TWC air quality failed: ${res.status}`);
+  const data = await res.json();
+  const aq = data.globalAirQuality ?? data;
+  return {
+    airQualityIndex: aq.airQualityIndex ?? null,
+    category: aq.airQualityCategory ?? aq.category ?? null,
+    primaryPollutant: aq.dominantPollutant ?? aq.primaryPollutant ?? null,
+  };
+}
+
 export interface LocationResult {
   city: string;
   adminDistrictCode: string;
