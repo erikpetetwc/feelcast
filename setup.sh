@@ -74,6 +74,9 @@ npm install --silent
 echo "→ Running database migrations..."
 npx prisma migrate deploy
 
+echo "→ Generating Prisma client..."
+npx prisma generate
+
 echo "→ Building app (this takes a few minutes)..."
 npm run build
 
