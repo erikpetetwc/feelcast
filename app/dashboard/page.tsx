@@ -165,6 +165,8 @@ export default function DashboardPage() {
         pollenIndex: weather.pollen?.index?.[0] ?? null,
         pressureChange: weather.obs?.pressureChange ?? null,
         uvIndex: weather.obs?.uvIndex ?? null,
+        temperature: weather.obs?.temperature ?? null,
+        humidity: weather.obs?.relativeHumidity ?? null,
       })
     : [];
 

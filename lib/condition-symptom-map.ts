@@ -135,18 +135,37 @@ export function personalizeRisks(conditionIds: string[], genericRisks: BodyRisk[
   return result.sort((a, b) => RISK_ORDER[b.risk] - RISK_ORDER[a.risk]);
 }
 
-// Reverse map: symptom ID → relevant risk groups (built from CONDITION_MAP)
-const SYMPTOM_TO_RISK_GROUPS: Record<string, RiskGroup[]> = {};
-for (const cond of Object.values(CONDITION_MAP)) {
-  for (const symptomId of cond.symptoms) {
-    if (!SYMPTOM_TO_RISK_GROUPS[symptomId]) SYMPTOM_TO_RISK_GROUPS[symptomId] = [];
-    for (const group of cond.riskGroups) {
-      if (!SYMPTOM_TO_RISK_GROUPS[symptomId].includes(group)) {
-        SYMPTOM_TO_RISK_GROUPS[symptomId].push(group);
-      }
-    }
-  }
-}
+// Explicit map: symptom ID → relevant risk groups
+const SYMPTOM_TO_RISK_GROUPS: Record<string, RiskGroup[]> = {
+  // Head & Neurological
+  headache: ["pressure"],
+  migraine: ["pressure", "uv"],
+  dizziness: ["pressure"],
+  brain_fog: ["pressure", "ache"],
+  // Joints & Muscles
+  joint_ache: ["ache"],
+  ra_flare: ["ache", "pressure"],
+  back_pain: ["ache"],
+  neck_pain: ["ache", "pressure"],
+  muscle_stiffness: ["ache"],
+  fibro_flare: ["ache", "pressure"],
+  // Respiratory & Allergy
+  breathing: ["breathing"],
+  asthma_flare: ["breathing", "pollen"],
+  sinus: ["pollen", "pressure"],
+  sneezing: ["pollen"],
+  itchy_eyes: ["pollen"],
+  // Energy & Mood
+  fatigue: ["uv", "ache"],
+  low_energy: ["pressure", "ache"],
+  mood: ["pressure"],
+  anxiety: ["pressure"],
+  // Skin & Other
+  skin: ["uv"],
+  eczema_flare: ["uv"],
+  nausea: ["pressure"],
+  swelling: ["ache"],
+};
 
 /**
  * Score each logged symptom against the generic TWC body risks.

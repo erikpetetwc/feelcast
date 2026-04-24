@@ -64,18 +64,22 @@ export function scoreFromIndices(params: {
   pollenIndex?: number | null;
   pressureChange?: number | null;
   uvIndex?: number | null;
+  temperature?: number | null;
+  humidity?: number | null;
 }): BodyRisk[] {
   const risks: BodyRisk[] = [];
 
+  // ── Ache & Pain (TWC index + temperature/humidity context) ──────────────────
   const achePain = categoryToRisk(params.achePainCategory);
   risks.push({
     symptom: "Joint & Body Aches",
     risk: achePain,
     icon: "🦴",
-    reason: descForCategory(params.achePainCategory, "ache and pain conditions"),
+    reason: acheReason(params.achePainCategory, params.temperature, params.humidity),
     index: params.achePainIndex ?? undefined,
   });
 
+  // ── Breathing (TWC index) ───────────────────────────────────────────────────
   const breathing = categoryToRisk(params.breathingCategory);
   risks.push({
     symptom: "Breathing Difficulty",
@@ -85,6 +89,7 @@ export function scoreFromIndices(params: {
     index: params.breathingIndex ?? undefined,
   });
 
+  // ── Pollen / Allergy (TWC index) ────────────────────────────────────────────
   const pollen = categoryToRisk(params.pollenCategory);
   risks.push({
     symptom: "Allergy / Sinus",
@@ -94,25 +99,35 @@ export function scoreFromIndices(params: {
     index: params.pollenIndex ?? undefined,
   });
 
+  // ── Barometric pressure → headache/migraine ─────────────────────────────────
+  // Research: falling pressure is the primary trigger. Drops ≥ 0.15 inHg (5 hPa)
+  // strongly associated with migraines. Rising pressure is a weaker trigger.
   const pressureChange = params.pressureChange ?? 0;
+  const absPressure = Math.abs(pressureChange);
+  const isDrop = pressureChange < -0.01;
+
   let headacheRisk: RiskLevel = "LOW";
-  if (Math.abs(pressureChange) >= 0.15) headacheRisk = "VERY HIGH";
-  else if (Math.abs(pressureChange) >= 0.10) headacheRisk = "HIGH";
-  else if (Math.abs(pressureChange) >= 0.05) headacheRisk = "MODERATE";
-  const pressureIndex = Math.min(100, Math.round((Math.abs(pressureChange) / 0.15) * 100));
+  if (isDrop) {
+    if (absPressure >= 0.15) headacheRisk = "VERY HIGH";
+    else if (absPressure >= 0.09) headacheRisk = "HIGH";
+    else if (absPressure >= 0.05) headacheRisk = "MODERATE";
+  } else if (pressureChange > 0.01) {
+    // Rising pressure: weaker trigger, higher threshold
+    if (absPressure >= 0.18) headacheRisk = "HIGH";
+    else if (absPressure >= 0.10) headacheRisk = "MODERATE";
+  }
+
+  const pressureIndex = Math.min(100, Math.round((absPressure / 0.15) * 100));
   risks.push({
     symptom: "Headache / Migraine",
     risk: headacheRisk,
     icon: "🤕",
-    reason:
-      pressureChange < -0.01
-        ? `Pressure dropping (${pressureChange.toFixed(2)} inHg)`
-        : pressureChange > 0.01
-        ? `Pressure rising (${pressureChange.toFixed(2)} inHg)`
-        : "Stable atmospheric pressure",
+    reason: pressureReason(pressureChange),
     index: pressureIndex,
   });
 
+  // ── UV index → sun fatigue & skin ──────────────────────────────────────────
+  // UV 6-7: moderate risk; 8+: high risk (WHO scale)
   const uv = params.uvIndex ?? 0;
   const fatigueRisk: RiskLevel = uv >= 8 ? "HIGH" : uv >= 6 ? "MODERATE" : "LOW";
   const uvIndex100 = Math.min(100, Math.round((uv / 11) * 100));
@@ -120,18 +135,55 @@ export function scoreFromIndices(params: {
     symptom: "Sun Fatigue",
     risk: fatigueRisk,
     icon: "☀️",
-    reason: `UV index ${uv}${uv >= 6 ? " — limit sun exposure" : ""}`,
+    reason: uv >= 8
+      ? `High UV (${uv}) — prolonged sun exposure can cause fatigue and flares`
+      : uv >= 6
+      ? `Moderate UV (${uv}) — limit sun exposure, especially midday`
+      : `UV index ${uv} — low risk`,
     index: uvIndex100,
   });
 
   return risks.sort((a, b) => RISK_ORDER[b.risk] - RISK_ORDER[a.risk]);
 }
 
+function pressureReason(pressureChange: number): string {
+  if (pressureChange < -0.01) {
+    const abs = Math.abs(pressureChange).toFixed(2);
+    return pressureChange <= -0.15
+      ? `Significant pressure drop (${abs} inHg) — strong migraine trigger`
+      : pressureChange <= -0.09
+      ? `Pressure falling (${abs} inHg) — common headache trigger`
+      : `Slight pressure drop (${abs} inHg) — may affect sensitive individuals`;
+  }
+  if (pressureChange > 0.01) {
+    return `Pressure rising (${pressureChange.toFixed(2)} inHg) — generally stable`;
+  }
+  return "Stable atmospheric pressure — favorable for headaches";
+}
+
+function acheReason(
+  category: string | null | undefined,
+  temperature: number | null | undefined,
+  humidity: number | null | undefined
+): string {
+  const base = descForCategory(category, "ache and pain conditions");
+  const factors: string[] = [];
+
+  if (temperature != null && temperature < 40)
+    factors.push(`cold (${temperature}°F)`);
+  if (humidity != null && humidity > 80)
+    factors.push(`high humidity (${humidity}%)`);
+  else if (humidity != null && humidity < 40)
+    factors.push(`low humidity (${humidity}%)`);
+
+  return factors.length > 0 ? `${base} — ${factors.join(", ")}` : base;
+}
+
 function descForCategory(category: string | null | undefined, symptom: string): string {
   if (!category) return "Conditions are favorable";
   const lower = category.toLowerCase();
   if (lower === "minimal" || lower === "low" || lower === "very good" || lower === "good")
-    return `${category} ${symptom} expected`;
+    return `Low ${symptom} expected`;
   if (lower === "moderate") return `Moderate ${symptom} — consider precautions`;
   return `${category} ${symptom} — take care today`;
 }
