@@ -20,6 +20,9 @@ export async function GET(req: NextRequest) {
     getDrySkinIndex(lat, lon),
   ]);
 
+  if (hourly.status === "rejected") console.error("[weather] hourly:", (hourly.reason as Error)?.message ?? hourly.reason);
+  if (airQuality.status === "rejected") console.error("[weather] airQuality:", (airQuality.reason as Error)?.message ?? airQuality.reason);
+
   return NextResponse.json({
     obs: obs.status === "fulfilled" ? obs.value : null,
     forecast: forecast.status === "fulfilled" ? forecast.value : null,

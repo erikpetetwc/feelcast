@@ -163,7 +163,7 @@ export interface AirQuality {
 
 export async function getHourlyForecast(lat: number, lon: number): Promise<HourlyForecast> {
   const res = await fetch(
-    url("/v3/wx/forecast/hourly/48hour", {
+    url("/v3/wx/forecast/hourly/2day", {
       geocode: `${lat},${lon}`,
       language: "en-US",
       units: "e",

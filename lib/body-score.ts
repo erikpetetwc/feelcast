@@ -17,14 +17,19 @@ export const RISK_ORDER: Record<RiskLevel, number> = {
 
 export const CATEGORY_MAP: Record<string, RiskLevel> = {
   minimal: "LOW",
+  "minimal concern": "LOW",
   "very good": "LOW",
   good: "LOW",
   low: "LOW",
+  "low concern": "LOW",
   moderate: "MODERATE",
+  "moderate concern": "MODERATE",
   fair: "MODERATE",
   poor: "HIGH",
   high: "HIGH",
+  "high concern": "HIGH",
   "very high": "VERY HIGH",
+  "very high concern": "VERY HIGH",
   "extremely high": "VERY HIGH",
 };
 
