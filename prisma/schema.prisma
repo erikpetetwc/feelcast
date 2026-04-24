@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String       @id @default(cuid())
+  email     String       @unique
+  name      String?
+  password  String?
+  location    Json?
+  conditions  Json?
+  logs        SymptomLog[]
+  createdAt DateTime     @default(now())
+}
+
+model SymptomLog {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  loggedAt        DateTime @default(now())
+  symptoms        Json
+  severity        Int
+  notes           String?
+  weatherSnapshot Json?
+  lat             Float
+  lon             Float
+}
