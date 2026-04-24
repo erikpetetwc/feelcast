@@ -13,12 +13,8 @@ export async function GET(req: NextRequest) {
   const to = searchParams.get("to");
 
   const dateFilter: Record<string, Date> = {};
-  if (from) dateFilter.gte = new Date(from);
-  if (to) {
-    const toDate = new Date(to);
-    toDate.setHours(23, 59, 59, 999);
-    dateFilter.lte = toDate;
-  }
+  if (from) dateFilter.gte = new Date(`${from}T00:00:00.000Z`);
+  if (to) dateFilter.lte = new Date(`${to}T23:59:59.999Z`);
 
   const logs = await db.symptomLog.findMany({
     where: {
@@ -46,6 +42,13 @@ export async function POST(req: NextRequest) {
     weatherSnapshot = await getCurrentObs(lat, lon);
   } catch {}
 
+  // Parse date-only strings as noon UTC to avoid timezone-day shifting
+  // e.g. "2024-04-22" → new Date("2024-04-22") = Apr 22 00:00 UTC = Apr 21 8pm EDT (wrong day)
+  // Fix:                 new Date("2024-04-22T12:00:00.000Z") = Apr 22 noon UTC = Apr 22 8am EDT ✓
+  const parsedLoggedAt = loggedAt
+    ? new Date(loggedAt.length === 10 ? `${loggedAt}T12:00:00.000Z` : loggedAt)
+    : undefined;
+
   const log = await db.symptomLog.create({
     data: {
       userId: session.user.id,
@@ -55,7 +58,7 @@ export async function POST(req: NextRequest) {
       weatherSnapshot: weatherSnapshot ? JSON.parse(JSON.stringify(weatherSnapshot)) : undefined,
       lat,
       lon,
-      ...(loggedAt ? { loggedAt: new Date(loggedAt) } : {}),
+      ...(parsedLoggedAt ? { loggedAt: parsedLoggedAt } : {}),
     },
   });
   return NextResponse.json(log, { status: 201 });
@@ -69,10 +72,9 @@ export async function DELETE(req: NextRequest) {
   const date = searchParams.get("date");
   if (!date) return NextResponse.json({ error: "date required" }, { status: 400 });
 
-  const start = new Date(date);
-  start.setHours(0, 0, 0, 0);
-  const end = new Date(date);
-  end.setHours(23, 59, 59, 999);
+  // Use explicit UTC day range to match how dates are stored and displayed
+  const start = new Date(`${date}T00:00:00.000Z`);
+  const end = new Date(`${date}T23:59:59.999Z`);
 
   const { count } = await db.symptomLog.deleteMany({
     where: { userId: session.user.id, loggedAt: { gte: start, lte: end } },

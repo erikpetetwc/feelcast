@@ -65,6 +65,7 @@ export default function HistoryPage() {
   const [logs, setLogs] = useState<RawLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDay, setSelectedDay] = useState<Date | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -80,11 +81,11 @@ export default function HistoryPage() {
       .then((data) => { setLogs(Array.isArray(data) ? data : []); setLoading(false); });
   }, [status, currentMonth]);
 
-  // Group logs by date string
+  // Group logs by UTC date string to avoid timezone-day shifting
   const logsByDate = useMemo(() => {
     const map: Record<string, RawLog[]> = {};
     for (const log of logs) {
-      const key = format(new Date(log.loggedAt), "yyyy-MM-dd");
+      const key = log.loggedAt.slice(0, 10); // "2024-04-22T12:00:00Z" → "2024-04-22"
       if (!map[key]) map[key] = [];
       map[key].push(log);
     }
@@ -105,6 +106,15 @@ export default function HistoryPage() {
 
   const selectedDayKey = selectedDay ? format(selectedDay, "yyyy-MM-dd") : null;
   const selectedLogs = selectedDayKey ? (logsByDate[selectedDayKey] ?? []) : [];
+
+  async function handleClearDay() {
+    if (!selectedDayKey || !window.confirm(`Clear all logged symptoms for ${selectedDayKey}?`)) return;
+    setClearing(true);
+    await fetch(`/api/logs?date=${selectedDayKey}`, { method: "DELETE" });
+    setLogs((prev) => prev.filter((l) => !l.loggedAt.startsWith(selectedDayKey)));
+    setClearing(false);
+    setSelectedDay(null);
+  }
 
   if (status === "loading") return null;
 
@@ -207,9 +217,21 @@ export default function HistoryPage() {
         {selectedDay && (
           <Card className="overflow-visible">
             <CardHeader className="pb-2">
-              <CardTitle className="text-base">
-                {format(selectedDay, "EEEE, MMMM d")}
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base">
+                  {format(selectedDay, "EEEE, MMMM d")}
+                </CardTitle>
+                {selectedLogs.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearDay}
+                    disabled={clearing}
+                    className="text-xs text-red-500 hover:text-red-700 underline underline-offset-2"
+                  >
+                    {clearing ? "Clearing…" : "Clear this day"}
+                  </button>
+                )}
+              </div>
             </CardHeader>
             <CardContent>
               {selectedLogs.length === 0 ? (
