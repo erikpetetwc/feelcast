@@ -2,16 +2,22 @@
 import { signIn } from "@/lib/auth";
 import { AuthError } from "next-auth";
 
-export async function credentialsSignIn(email: string, password: string): Promise<{ error: string } | void> {
-  console.log("[credentialsSignIn] called:", email);
+export async function credentialsSignIn(
+  email: string,
+  password: string
+): Promise<{ error: string } | { success: true }> {
   try {
     await signIn("credentials", { email, password, redirectTo: "/dashboard" });
   } catch (error) {
+    // NEXT_REDIRECT means sign-in succeeded — cookie is set, return success
+    // so the client can do a hard navigation (fixes iOS Safari cookie timing)
+    if ((error as Error & { digest?: string }).digest?.startsWith("NEXT_REDIRECT")) {
+      return { success: true };
+    }
     if (error instanceof AuthError) {
-      console.log("[credentialsSignIn] auth error:", error.type, error.message);
       return { error: "Invalid email or password" };
     }
-    console.log("[credentialsSignIn] redirect destination:", (error as any)?.digest ?? (error as Error)?.message);
     throw error;
   }
+  return { success: true };
 }

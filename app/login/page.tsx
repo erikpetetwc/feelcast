@@ -49,6 +49,9 @@ export default function LoginPage() {
         setError(result.error);
         setStep("");
         setLoading(false);
+      } else {
+        // Hard navigate so iOS Safari commits the session cookie before loading /dashboard
+        window.location.href = "/dashboard";
       }
     } catch (err) {
       setError("Something went wrong. Please check your connection and try again.");
