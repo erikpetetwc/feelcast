@@ -6,27 +6,13 @@ import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { SYMPTOM_GROUPS } from "@/lib/symptoms";
 
 interface LocationResult {
   displayName: string;
   latitude: number;
   longitude: number;
 }
-
-const HEALTH_CONDITIONS = [
-  { id: "ra", label: "Rheumatoid Arthritis", icon: "🦾" },
-  { id: "osteoarthritis", label: "Osteoarthritis", icon: "🦴" },
-  { id: "fibromyalgia", label: "Fibromyalgia", icon: "⚡" },
-  { id: "migraines", label: "Chronic Migraines", icon: "🤕" },
-  { id: "asthma", label: "Asthma", icon: "🫁" },
-  { id: "copd", label: "COPD", icon: "💨" },
-  { id: "lupus", label: "Lupus", icon: "🌙" },
-  { id: "ms", label: "Multiple Sclerosis", icon: "🧠" },
-  { id: "anxiety", label: "Anxiety", icon: "😰" },
-  { id: "seasonal_allergies", label: "Seasonal Allergies", icon: "🌿" },
-  { id: "eczema", label: "Eczema / Psoriasis", icon: "🧴" },
-  { id: "ibd", label: "IBD / Crohn's", icon: "🫀" },
-];
 
 export default function SettingsPage() {
   const { data: session, status } = useSession();
@@ -37,7 +23,7 @@ export default function SettingsPage() {
   const [locationSaved, setLocationSaved] = useState(false);
   const [conditionsSaved, setConditionsSaved] = useState(false);
   const [currentLocation, setCurrentLocation] = useState("");
-  const [conditions, setConditions] = useState<Set<string>>(new Set());
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [loadingConditions, setLoadingConditions] = useState(true);
 
   useEffect(() => {
@@ -51,9 +37,7 @@ export default function SettingsPage() {
     fetch("/api/me")
       .then((r) => r.json())
       .then((user) => {
-        if (Array.isArray(user.conditions)) {
-          setConditions(new Set(user.conditions));
-        }
+        if (Array.isArray(user.conditions)) setSelected(new Set(user.conditions));
         setLoadingConditions(false);
       });
   }, [status]);
@@ -84,8 +68,8 @@ export default function SettingsPage() {
     setTimeout(() => setLocationSaved(false), 3000);
   }
 
-  function toggleCondition(id: string) {
-    setConditions((prev) => {
+  function toggle(id: string) {
+    setSelected((prev) => {
       const next = new Set(prev);
       next.has(id) ? next.delete(id) : next.add(id);
       return next;
@@ -96,7 +80,7 @@ export default function SettingsPage() {
     await fetch("/api/me", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conditions: Array.from(conditions) }),
+      body: JSON.stringify({ conditions: Array.from(selected) }),
     });
     setConditionsSaved(true);
     setTimeout(() => setConditionsSaved(false), 3000);
@@ -156,46 +140,56 @@ export default function SettingsPage() {
 
         <Card className="overflow-visible">
           <CardHeader>
-            <CardTitle className="text-base">My Health Conditions</CardTitle>
+            <CardTitle className="text-base">My Symptoms to Watch</CardTitle>
             <p className="text-xs text-muted-foreground mt-1">
-              Select any conditions you have — FeelCast will personalize your forecast around them.
+              Select the symptoms you experience — they'll appear front and center every time you log, and personalize your forecast.
             </p>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-5">
             {loadingConditions ? (
               <div className="h-24 bg-gray-100 animate-pulse rounded" />
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {HEALTH_CONDITIONS.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => toggleCondition(c.id)}
-                    className={cn(
-                      "flex items-center gap-2 p-2.5 rounded-lg border text-sm text-left transition-colors",
-                      conditions.has(c.id)
-                        ? "bg-blue-50 border-blue-300 text-blue-800"
-                        : "bg-white border-gray-200 hover:bg-gray-50"
-                    )}
-                  >
-                    <span className="text-lg leading-none">{c.icon}</span>
-                    <span className="font-medium leading-tight">{c.label}</span>
-                  </button>
-                ))}
-              </div>
+              SYMPTOM_GROUPS.map((group) => (
+                <div key={group.group}>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+                    {group.group}
+                  </p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {group.items.map((s) => (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => toggle(s.id)}
+                        className={cn(
+                          "flex items-center gap-2 p-2.5 rounded-lg border text-sm text-left transition-colors",
+                          selected.has(s.id)
+                            ? "bg-blue-50 border-blue-300 text-blue-800"
+                            : "bg-white border-gray-200 hover:bg-gray-50"
+                        )}
+                      >
+                        <span className="text-lg leading-none">{s.icon}</span>
+                        <span className="font-medium leading-tight">{s.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
             )}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 pt-1">
               <Button onClick={saveConditions} disabled={loadingConditions}>
-                {conditionsSaved ? "✓ Saved" : "Save conditions"}
+                {conditionsSaved ? "✓ Saved" : "Save"}
               </Button>
-              {conditions.size > 0 && (
+              {selected.size > 0 && (
                 <button
                   type="button"
-                  onClick={() => setConditions(new Set())}
+                  onClick={() => setSelected(new Set())}
                   className="text-xs text-muted-foreground hover:text-red-500 underline underline-offset-2"
                 >
                   Clear all
                 </button>
+              )}
+              {selected.size > 0 && (
+                <span className="text-xs text-muted-foreground">{selected.size} selected</span>
               )}
             </div>
           </CardContent>

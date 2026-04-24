@@ -92,6 +92,21 @@ const RISK_GROUP_TO_SYMPTOM: Record<RiskGroup, string> = {
   uv: "Sun Fatigue",
 };
 
+/** Personalize risks based on saved symptom IDs (new model) */
+export function personalizeRisksBySymptoms(symptomIds: string[], genericRisks: BodyRisk[]): BodyRisk[] {
+  if (symptomIds.length === 0) return genericRisks;
+  const byName = new Map(genericRisks.map((r) => [r.symptom, r]));
+  const relevantGroups = new Set<RiskGroup>();
+  for (const id of symptomIds) {
+    for (const g of (SYMPTOM_TO_RISK_GROUPS[id] ?? [])) relevantGroups.add(g);
+  }
+  if (relevantGroups.size === 0) return genericRisks;
+  return [...relevantGroups]
+    .map((g) => byName.get(RISK_GROUP_TO_SYMPTOM[g]))
+    .filter((r): r is BodyRisk => r !== undefined)
+    .sort((a, b) => RISK_ORDER[b.risk] - RISK_ORDER[a.risk]);
+}
+
 /** Map user conditions to personalized BodyRisk rows for the dashboard */
 export function personalizeRisks(conditionIds: string[], genericRisks: BodyRisk[]): BodyRisk[] {
   if (conditionIds.length === 0) return genericRisks;

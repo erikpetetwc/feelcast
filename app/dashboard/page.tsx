@@ -7,7 +7,7 @@ import { BodyWeatherCard } from "@/components/BodyWeatherCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { scoreFromIndices, worstRisk, riskDot, type BodyRisk, type RiskLevel } from "@/lib/body-score";
-import { personalizeRisks, scoreLoggedSymptoms } from "@/lib/condition-symptom-map";
+import { personalizeRisksBySymptoms, scoreLoggedSymptoms } from "@/lib/condition-symptom-map";
 import { SYMPTOM_BY_ID } from "@/lib/symptoms";
 import { cn } from "@/lib/utils";
 import { TwcLogo } from "@/components/TwcLogo";
@@ -172,7 +172,7 @@ export default function DashboardPage() {
   const risks = todayLog
     ? scoreLoggedSymptoms(todayLog.symptoms, genericRisks, SYMPTOM_BY_ID)
     : conditions && conditions.length > 0
-    ? personalizeRisks(conditions, genericRisks)
+    ? personalizeRisksBySymptoms(conditions, genericRisks)
     : genericRisks;
 
   if (status === "loading") return null;
@@ -271,7 +271,7 @@ export default function DashboardPage() {
                         pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
                       });
                       const dayRisks = conditions && conditions.length > 0
-                        ? personalizeRisks(conditions, genericDay)
+                        ? personalizeRisksBySymptoms(conditions, genericDay)
                         : genericDay;
                       const dayRisk = worstRisk(dayRisks.map(r => r.risk));
                       const dotClass = riskDot(dayRisk);
@@ -329,7 +329,7 @@ export default function DashboardPage() {
                       pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
                     });
                     const dayRisks = conditions && conditions.length > 0
-                      ? personalizeRisks(conditions, genericDay)
+                      ? personalizeRisksBySymptoms(conditions, genericDay)
                       : genericDay;
                     const dayRisk = worstRisk(dayRisks.map(r => r.risk));
                     const elevated = dayRisks.filter(r => r.risk !== "LOW");

@@ -7,7 +7,6 @@ import { Navigation } from "@/components/Navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { conditionsToSymptomIds } from "@/lib/condition-symptom-map";
 import { SYMPTOM_GROUPS, SYMPTOM_BY_ID } from "@/lib/symptoms";
 
 function SymptomButton({
@@ -158,7 +157,7 @@ function LogPageInner() {
 
   if (status === "loading") return null;
 
-  const mySymptomIds = conditions ? conditionsToSymptomIds(conditions) : [];
+  const mySymptomIds = conditions ?? [];
   const mySymptomItems = mySymptomIds.map((id) => SYMPTOM_BY_ID[id]).filter(Boolean);
   // Filter out "My Conditions" symptoms from the general groups to avoid duplication
   const mySymptomSet = new Set(mySymptomIds);
