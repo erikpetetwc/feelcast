@@ -46,10 +46,16 @@ export async function POST(req: NextRequest) {
     console.log("[login] bcrypt result:", pwOk);
     if (!pwOk) return makeError("badpw");
 
+    const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
+    if (!secret) {
+      console.error("[login] AUTH_SECRET / NEXTAUTH_SECRET not set");
+      return makeError("exception");
+    }
+
     // Encode using same algorithm + salt as NextAuth so auth() can decode it
     const token = await encode({
       token: { sub: user.id, id: user.id, name: user.name ?? null, email: user.email },
-      secret: process.env.AUTH_SECRET!,
+      secret,
       maxAge: 30 * 24 * 60 * 60,
       salt: cookieName,
     });
