@@ -192,6 +192,7 @@ export async function getAirQuality(lat: number, lon: number): Promise<AirQualit
   );
   if (!res.ok) throw new Error(`TWC air quality failed: ${res.status}`);
   const data = await res.json();
+  console.log("[aqi raw]", JSON.stringify(data).slice(0, 500));
   const aq = data.globalAirQuality ?? data;
   return {
     airQualityIndex: aq.airQualityIndex ?? null,

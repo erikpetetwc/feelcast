@@ -6,7 +6,7 @@ import { Navigation } from "@/components/Navigation";
 import { BodyWeatherCard } from "@/components/BodyWeatherCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { scoreFromIndices, worstRisk, riskDot, aqiToRisk, aqiLabel, scoreHour, type BodyRisk, type RiskLevel } from "@/lib/body-score";
+import { scoreFromIndices, worstRisk, riskDot, aqiToRisk, aqiLabel, scoreHour, RISK_ORDER, type BodyRisk, type RiskLevel } from "@/lib/body-score";
 import { personalizeRisksBySymptoms, scoreLoggedSymptoms } from "@/lib/condition-symptom-map";
 import { SYMPTOM_BY_ID } from "@/lib/symptoms";
 import { cn } from "@/lib/utils";
@@ -96,6 +96,69 @@ function HourlyFeelCard({ hourly, airQuality }: {
           })}
         </div>
         <p className="text-xs text-muted-foreground mt-3">Feel rating based on UV, precipitation, and temperature.</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+const INTRADAY_BLOCKS = [
+  { name: "Morning", icon: "🌅", test: (h: number) => h >= 6 && h < 12 },
+  { name: "Afternoon", icon: "☀️", test: (h: number) => h >= 12 && h < 18 },
+  { name: "Evening", icon: "🌆", test: (h: number) => h >= 18 && h < 22 },
+  { name: "Overnight", icon: "🌙", test: (h: number) => h >= 22 || h < 6 },
+];
+
+function IntradayBlocksCard({ hourly, aqi }: {
+  hourly: { validTimeLocal: string[]; temperature: (number | null)[]; uvIndex: (number | null)[]; precipChance: (number | null)[] };
+  aqi: number | null;
+}) {
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayHours = hourly.validTimeLocal
+    .map((t, i) => ({ hour: parseInt(t.slice(11, 13), 10), date: t.slice(0, 10), i }))
+    .filter(({ date }) => date === todayStr);
+
+  const nowHour = new Date().getHours();
+
+  const blocks = INTRADAY_BLOCKS.map((block) => {
+    const hours = todayHours.filter(({ hour }) => block.test(hour));
+    if (hours.length === 0) return { ...block, risk: "LOW" as RiskLevel, tempRange: null, maxPrecip: 0, past: false };
+    const risks = hours.map(({ i }) => scoreHour({ temp: hourly.temperature[i], uv: hourly.uvIndex[i], precip: hourly.precipChance[i], aqi }));
+    const temps = hours.map(({ i }) => hourly.temperature[i]).filter((t): t is number => t != null);
+    const precips = hours.map(({ i }) => hourly.precipChance[i] ?? 0);
+    const lastHour = hours[hours.length - 1].hour;
+    return {
+      ...block,
+      risk: worstRisk(risks),
+      tempRange: temps.length ? `${Math.min(...temps)}–${Math.max(...temps)}°` : null,
+      maxPrecip: Math.max(...precips),
+      past: lastHour < nowHour,
+    };
+  });
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base">Today by Time of Day</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-4 gap-2">
+          {blocks.map((block) => {
+            const dotClass = riskDot(block.risk);
+            const labelColor = { LOW: "text-green-600", MODERATE: "text-yellow-600", HIGH: "text-orange-500", "VERY HIGH": "text-red-600" }[block.risk];
+            return (
+              <div key={block.name} className={cn("flex flex-col items-center gap-1 py-2 px-1 rounded-lg bg-gray-50 text-center", block.past && "opacity-50")}>
+                <span className="text-base">{block.icon}</span>
+                <span className="text-[11px] font-semibold text-muted-foreground">{block.name}</span>
+                <span className={cn("w-2.5 h-2.5 rounded-full", dotClass)} />
+                <span className={cn("text-[10px] font-medium", labelColor)}>
+                  {block.risk === "LOW" ? "Low" : block.risk === "MODERATE" ? "Mod" : block.risk === "HIGH" ? "High" : "V.Hi"}
+                </span>
+                {block.tempRange && <span className="text-[10px] text-muted-foreground">{block.tempRange}</span>}
+                {block.maxPrecip > 0 && <span className="text-[10px] text-blue-500">{block.maxPrecip}%</span>}
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
@@ -243,6 +306,33 @@ export default function DashboardPage() {
     ? personalizeRisksBySymptoms(conditions, genericRisks, SYMPTOM_BY_ID)
     : genericRisks;
 
+  // Compute all 7 day risks upfront for best day callout and trend arrows
+  const allDayRisks: RiskLevel[] = weather?.forecast
+    ? weather.forecast.dayOfWeek.slice(0, 7).map((_, i) => {
+        const dpIdx = i * 2;
+        const genericDay = scoreFromIndices({
+          achePainCategory: weather.achePain?.category?.[dpIdx] ?? null,
+          achePainIndex: weather.achePain?.index?.[dpIdx] ?? null,
+          breathingCategory: weather.breathing?.category?.[dpIdx] ?? null,
+          breathingIndex: weather.breathing?.index?.[dpIdx] ?? null,
+          pollenCategory: weather.pollen?.category?.[dpIdx] ?? null,
+          pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
+        });
+        const dayRisks = conditions && conditions.length > 0
+          ? personalizeRisksBySymptoms(conditions, genericDay, SYMPTOM_BY_ID)
+          : genericDay;
+        return worstRisk(dayRisks.map(r => r.risk));
+      })
+    : [];
+
+  let bestDayIdx = -1;
+  if (allDayRisks.length > 1 && conditions && conditions.length > 0) {
+    bestDayIdx = 1;
+    for (let i = 2; i < allDayRisks.length; i++) {
+      if (RISK_ORDER[allDayRisks[i]] < RISK_ORDER[allDayRisks[bestDayIdx]]) bestDayIdx = i;
+    }
+  }
+
   if (status === "loading") return null;
 
   return (
@@ -323,13 +413,27 @@ export default function DashboardPage() {
             />
 
             {weather.hourly && weather.hourly.validTimeLocal.length > 0 && (
-              <HourlyFeelCard hourly={weather.hourly} airQuality={weather.airQuality ?? null} />
+              <>
+                <HourlyFeelCard hourly={weather.hourly} airQuality={weather.airQuality ?? null} />
+                <IntradayBlocksCard hourly={weather.hourly} aqi={weather.airQuality?.airQualityIndex ?? null} />
+              </>
             )}
 
             {weather.forecast && (
               <Card className="overflow-visible">
                 <CardHeader>
                   <CardTitle className="text-base">7-Day Forecast</CardTitle>
+                  {bestDayIdx >= 1 && weather.forecast && (() => {
+                    const bestRisk = allDayRisks[bestDayIdx];
+                    const isGood = bestRisk === "LOW" || bestRisk === "MODERATE";
+                    return (
+                      <div className={cn("mt-1 text-xs px-2.5 py-1.5 rounded-md font-medium", isGood ? "bg-green-50 text-green-800" : "bg-amber-50 text-amber-800")}>
+                        {isGood
+                          ? `Best day this week: ${weather.forecast.dayOfWeek[bestDayIdx]} — ${bestRisk === "LOW" ? "Low risk across your conditions" : "Moderate conditions"}`
+                          : "No great days this week — take extra care."}
+                      </div>
+                    );
+                  })()}
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-7 gap-1">
@@ -346,11 +450,15 @@ export default function DashboardPage() {
                       const dayRisks = conditions && conditions.length > 0
                         ? personalizeRisksBySymptoms(conditions, genericDay, SYMPTOM_BY_ID)
                         : genericDay;
-                      const dayRisk = worstRisk(dayRisks.map(r => r.risk));
+                      const dayRisk = allDayRisks[i] ?? worstRisk(dayRisks.map(r => r.risk));
                       const dotClass = riskDot(dayRisk);
                       const riskLabel = dayRisk === "LOW" ? "Low" : dayRisk === "MODERATE" ? "Mod" : dayRisk === "HIGH" ? "High" : "V.Hi";
                       const elevatedCount = dayRisks.filter(r => r.risk !== "LOW").length;
                       const isSelected = selectedForecastDay === i;
+                      const todayRisk = allDayRisks[0];
+                      const trendDiff = i === 0 || !todayRisk ? 0 : RISK_ORDER[dayRisk] - RISK_ORDER[todayRisk];
+                      const trendArrow = i === 0 ? null : trendDiff > 0 ? "↑" : trendDiff < 0 ? "↓" : "–";
+                      const trendColor = trendDiff > 0 ? "text-red-500" : trendDiff < 0 ? "text-green-500" : "text-gray-400";
 
                       return (
                         <button
@@ -377,7 +485,10 @@ export default function DashboardPage() {
                             </p>
                           )}
                           <div className="mt-1.5 flex flex-col items-center gap-0.5">
-                            <ForecastDot dotClass={dayRisk !== "LOW" ? dotClass : "bg-green-400"} />
+                            <div className="flex items-center gap-0.5">
+                              <ForecastDot dotClass={dayRisk !== "LOW" ? dotClass : "bg-green-400"} />
+                              {trendArrow && <span className={cn("text-[10px] font-bold leading-none", trendColor)}>{trendArrow}</span>}
+                            </div>
                             <span className={cn("text-[9px] font-medium leading-none mt-0.5", {
                               "text-green-600": dayRisk === "LOW",
                               "text-yellow-600": dayRisk === "MODERATE",

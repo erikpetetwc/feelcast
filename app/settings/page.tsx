@@ -194,6 +194,17 @@ export default function SettingsPage() {
             </div>
           </CardContent>
         </Card>
+        <Card className="opacity-60">
+          <CardHeader>
+            <CardTitle className="text-base">🔔 Notifications</CardTitle>
+            <p className="text-xs text-muted-foreground mt-1">
+              Get alerted when weather conditions are about to worsen for your symptoms.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground italic">Coming soon</p>
+          </CardContent>
+        </Card>
       </main>
     </div>
   );

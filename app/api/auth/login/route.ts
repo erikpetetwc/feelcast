@@ -27,11 +27,7 @@ export async function POST(req: NextRequest) {
     ? "__Secure-authjs.session-token"
     : "authjs.session-token";
 
-  // DEBUG — remove after diagnosing iPhone login failure
-  console.log("[login] ct:", ct, "email:", email, "pw-len:", password.length, "host:", host, "baseUrl:", baseUrl);
-
   const makeError = (code: string) => {
-    console.log("[login] error:", code);
     if (ct.includes("application/json")) {
       return NextResponse.json({ error: "Invalid email or password" }, { status: 401 });
     }
@@ -40,10 +36,8 @@ export async function POST(req: NextRequest) {
 
   try {
     const user = await db.user.findUnique({ where: { email } });
-    console.log("[login] user found:", !!user, "has password:", !!user?.password);
     if (!user?.password) return makeError("nouser");
     const pwOk = await bcrypt.compare(password, user.password);
-    console.log("[login] bcrypt result:", pwOk);
     if (!pwOk) return makeError("badpw");
 
     const secret = process.env.AUTH_SECRET ?? process.env.NEXTAUTH_SECRET;
@@ -72,8 +66,6 @@ export async function POST(req: NextRequest) {
       return res;
     }
 
-    // Form POST — server-side redirect so browser commits cookie before loading /dashboard
-    console.log("[login] success, redirecting to", baseUrl + "/dashboard");
     const res = NextResponse.redirect(new URL("/dashboard", baseUrl), { status: 303 });
     res.cookies.set(cookieName, token, {
       httpOnly: true,

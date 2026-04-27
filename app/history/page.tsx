@@ -56,6 +56,40 @@ function scoreToStyle(score: number | null): { bg: string; text: string; label: 
   return { bg: "bg-red-100 border-red-300", text: "text-red-800", label: "Severe" };
 }
 
+function getWeatherBadge(snapshot: RawLog["weatherSnapshot"]): string {
+  if (!snapshot) return "";
+  const badges: string[] = [];
+  const pc = snapshot.pressureChange ?? 0;
+  if (pc < -0.09) badges.push("↓↓");
+  else if (pc < -0.04) badges.push("↓");
+  else if (pc > 0.09) badges.push("↑↑");
+  else if (pc > 0.04) badges.push("↑");
+  const temp = snapshot.temperature ?? null;
+  if (temp != null && temp >= 90) badges.push("🔥");
+  else if (temp != null && temp <= 32) badges.push("❄️");
+  if ((snapshot.relativeHumidity ?? 0) >= 80) badges.push("💧");
+  return badges.join(" ");
+}
+
+interface CorrelationResult {
+  dropAvg: number; otherAvg: number; dropCount: number; otherCount: number;
+}
+
+function computeCorrelation(logs: RawLog[]): CorrelationResult | null {
+  if (logs.length < 5) return null;
+  const withSnap = logs.filter(l => l.weatherSnapshot?.pressureChange != null);
+  if (withSnap.length < 5) return null;
+  const dropLogs = withSnap.filter(l => (l.weatherSnapshot!.pressureChange ?? 0) < -0.05);
+  const otherLogs = withSnap.filter(l => (l.weatherSnapshot!.pressureChange ?? 0) >= -0.05);
+  if (dropLogs.length < 2 || otherLogs.length < 2) return null;
+  const avgSev = (ls: RawLog[]) => {
+    const entries = ls.flatMap(l => parseSymptoms(l.symptoms));
+    if (!entries.length) return 0;
+    return entries.reduce((s, e) => s + e.severity, 0) / entries.length;
+  };
+  return { dropAvg: avgSev(dropLogs), otherAvg: avgSev(otherLogs), dropCount: dropLogs.length, otherCount: otherLogs.length };
+}
+
 const DOW_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 
 export default function HistoryPage() {
@@ -106,6 +140,7 @@ export default function HistoryPage() {
 
   const selectedDayKey = selectedDay ? format(selectedDay, "yyyy-MM-dd") : null;
   const selectedLogs = selectedDayKey ? (logsByDate[selectedDayKey] ?? []) : [];
+  const correlation = useMemo(() => computeCorrelation(logs), [logs]);
 
   async function handleClearDay() {
     if (!selectedDayKey || !window.confirm(`Clear all logged symptoms for ${selectedDayKey}?`)) return;
@@ -169,13 +204,14 @@ export default function HistoryPage() {
                   const style = scoreToStyle(score);
                   const isSelected = selectedDay && isSameDay(day, selectedDay);
                   const today = isToday(day);
+                  const weatherBadge = dayLogs.length > 0 ? getWeatherBadge(dayLogs[0].weatherSnapshot) : "";
 
                   return (
                     <button
                       key={key}
                       onClick={() => setSelectedDay(isSameDay(day, selectedDay ?? new Date(0)) ? null : day)}
                       className={[
-                        "relative flex flex-col items-center justify-center rounded-lg border py-2 text-sm transition-all",
+                        "relative flex flex-col items-center justify-center rounded-lg border py-1.5 text-sm transition-all",
                         score !== null ? style.bg : "border-transparent hover:bg-muted/40",
                         isSelected ? "ring-2 ring-blue-500 ring-offset-1" : "",
                         today ? "font-bold" : "",
@@ -186,6 +222,9 @@ export default function HistoryPage() {
                         <span className={`text-[9px] leading-none mt-0.5 ${style.text} opacity-80`}>
                           {style.label}
                         </span>
+                      )}
+                      {weatherBadge && (
+                        <span className="text-[8px] leading-none mt-0.5 text-muted-foreground/70">{weatherBadge}</span>
                       )}
                       {today && (
                         <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-blue-500" />
@@ -212,6 +251,30 @@ export default function HistoryPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Correlation insight card */}
+        {correlation && (
+          <Card className="border-blue-100 bg-blue-50/50">
+            <CardHeader className="pb-1">
+              <CardTitle className="text-sm text-blue-800">📊 Weather Pattern Insight</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-1">
+              <p className="text-xs text-blue-700">
+                On the {correlation.dropCount} day{correlation.dropCount !== 1 ? "s" : ""} with a pressure drop this month,
+                your average symptom severity was{" "}
+                <span className="font-semibold">{correlation.dropAvg.toFixed(1)}/5</span>{" "}
+                vs{" "}
+                <span className="font-semibold">{correlation.otherAvg.toFixed(1)}/5</span>{" "}
+                on other days.
+                {correlation.dropAvg > correlation.otherAvg + 0.3
+                  ? " Pressure changes appear to worsen your symptoms."
+                  : correlation.dropAvg < correlation.otherAvg - 0.3
+                  ? " Pressure changes don't seem to worsen your symptoms."
+                  : " No strong pattern detected yet."}
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Day detail panel */}
         {selectedDay && (
