@@ -146,15 +146,28 @@ function IntradayBlocksCard({ hourly, aqi }: {
             const dotClass = riskDot(block.risk);
             const labelColor = { LOW: "text-green-600", MODERATE: "text-yellow-600", HIGH: "text-orange-500", "VERY HIGH": "text-red-600" }[block.risk];
             return (
-              <div key={block.name} className={cn("flex flex-col items-center gap-1 py-2 px-1 rounded-lg bg-gray-50 text-center", block.past && "opacity-50")}>
+              <div key={block.name} className={cn("flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-lg bg-gray-50 text-center", block.past && "opacity-50")}>
                 <span className="text-base">{block.icon}</span>
                 <span className="text-[11px] font-semibold text-muted-foreground">{block.name}</span>
-                <span className={cn("w-2.5 h-2.5 rounded-full", dotClass)} />
-                <span className={cn("text-[10px] font-medium", labelColor)}>
-                  {block.risk === "LOW" ? "Low" : block.risk === "MODERATE" ? "Mod" : block.risk === "HIGH" ? "High" : "V.Hi"}
-                </span>
-                {block.tempRange && <span className="text-[10px] text-muted-foreground">{block.tempRange}</span>}
-                {block.maxPrecip > 0 && <span className="text-[10px] text-blue-500">{block.maxPrecip}%</span>}
+                <div className="flex items-center gap-1">
+                  <span className={cn("w-2 h-2 rounded-full shrink-0", dotClass)} />
+                  <span className={cn("text-[10px] font-semibold", labelColor)}>
+                    {block.risk === "LOW" ? "Low" : block.risk === "MODERATE" ? "Moderate" : block.risk === "HIGH" ? "High" : "Very High"}
+                  </span>
+                </div>
+                <span className="text-[9px] font-medium text-muted-foreground uppercase tracking-wide">body risk</span>
+                {block.tempRange && (
+                  <div className="flex flex-col items-center leading-none mt-0.5">
+                    <span className="text-[10px] text-foreground font-medium">{block.tempRange}F</span>
+                    <span className="text-[9px] text-muted-foreground">temp range</span>
+                  </div>
+                )}
+                {block.maxPrecip > 0 && (
+                  <div className="flex flex-col items-center leading-none">
+                    <span className="text-[10px] text-blue-500 font-medium">☔ {block.maxPrecip}%</span>
+                    <span className="text-[9px] text-muted-foreground">rain chance</span>
+                  </div>
+                )}
               </div>
             );
           })}
