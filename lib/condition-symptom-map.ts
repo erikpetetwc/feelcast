@@ -1,6 +1,6 @@
 import { type BodyRisk, type RiskLevel, RISK_ORDER } from "./body-score";
 
-export type RiskGroup = "ache" | "breathing" | "pollen" | "pressure" | "uv" | "drySkin" | "airQuality";
+export type RiskGroup = "ache" | "breathing" | "pollen" | "pressure" | "uv" | "drySkin" | "airQuality" | "flu" | "mosquito";
 
 export interface ConditionProfile {
   label: string;
@@ -44,7 +44,7 @@ export const CONDITION_MAP: Record<string, ConditionProfile> = {
     label: "COPD",
     icon: "💨",
     symptoms: ["breathing", "fatigue"],
-    riskGroups: ["breathing", "airQuality"],
+    riskGroups: ["breathing", "airQuality", "flu"],
   },
   lupus: {
     label: "Lupus",
@@ -92,6 +92,8 @@ const RISK_GROUP_TO_SYMPTOM: Record<RiskGroup, string> = {
   uv: "Sun Fatigue",
   drySkin: "Dry Skin",
   airQuality: "Air Quality",
+  flu: "Flu Risk",
+  mosquito: "Mosquito Activity",
 };
 
 /**
@@ -179,15 +181,15 @@ const SYMPTOM_TO_RISK_GROUPS: Record<string, RiskGroup[]> = {
   sneezing: ["pollen"],
   itchy_eyes: ["pollen"],
   // Energy & Mood
-  fatigue: ["uv", "ache"],
-  low_energy: ["pressure", "ache"],
+  fatigue: ["uv", "ache", "flu"],
+  low_energy: ["pressure", "ache", "flu"],
   mood: ["pressure"],
   anxiety: ["pressure"],
   // Skin & Other
-  skin: ["uv", "drySkin"],
-  eczema_flare: ["uv", "drySkin"],
+  skin: ["uv", "drySkin", "mosquito"],
+  eczema_flare: ["uv", "drySkin", "mosquito"],
   nausea: ["pressure"],
-  swelling: ["ache"],
+  swelling: ["ache", "mosquito"],
 };
 
 /**

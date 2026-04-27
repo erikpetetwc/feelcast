@@ -105,6 +105,10 @@ export function scoreFromIndices(params: {
   uvIndex?: number | null;
   temperature?: number | null;
   humidity?: number | null;
+  fluCategory?: string | null;
+  fluIndex?: number | null;
+  mosquitoCategory?: string | null;
+  mosquitoIndex?: number | null;
 }): BodyRisk[] {
   const risks: BodyRisk[] = [];
 
@@ -204,7 +208,37 @@ export function scoreFromIndices(params: {
     });
   }
 
+  // ── Flu Risk (TWC regional outbreak index) ────────────────────────────────
+  if (params.fluCategory != null || params.fluIndex != null) {
+    risks.push({
+      symptom: "Flu Risk",
+      risk: categoryToRisk(params.fluCategory),
+      icon: "🤧",
+      reason: fluReason(params.fluCategory),
+      index: params.fluIndex ?? undefined,
+    });
+  }
+
+  // ── Mosquito Activity (TWC index) ──────────────────────────────────────────
+  if (params.mosquitoCategory != null || params.mosquitoIndex != null) {
+    risks.push({
+      symptom: "Mosquito Activity",
+      risk: categoryToRisk(params.mosquitoCategory),
+      icon: "🦟",
+      reason: descForCategory(params.mosquitoCategory, "mosquito activity"),
+      index: params.mosquitoIndex ?? undefined,
+    });
+  }
+
   return risks.sort((a, b) => RISK_ORDER[b.risk] - RISK_ORDER[a.risk]);
+}
+
+function fluReason(category: string | null | undefined): string {
+  if (!category) return "Regional flu activity data unavailable";
+  const lower = category.toLowerCase();
+  if (lower === "low") return "Low regional flu activity";
+  if (lower === "moderate") return "Moderate regional flu activity — take precautions";
+  return `${category} regional flu activity — high-risk individuals should take extra care`;
 }
 
 function pressureReason(pressureChange: number): string {

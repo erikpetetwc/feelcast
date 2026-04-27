@@ -201,6 +201,56 @@ export async function getAirQuality(lat: number, lon: number): Promise<AirQualit
   };
 }
 
+const FLU_COLOR_TO_CATEGORY: Record<string, string> = {
+  green: "Low",
+  yellow: "Moderate",
+  orange: "High",
+  red: "Very High",
+};
+
+export async function getFluIndex(lat: number, lon: number): Promise<BodyIndex> {
+  const res = await fetch(
+    url("/v2/indices/flu/daypart/7day", {
+      geocode: `${lat},${lon}`,
+      language: "en-US",
+    }),
+    { next: { revalidate: 3600 } }
+  );
+  if (!res.ok) throw new Error(`TWC flu index failed: ${res.status}`);
+  const data = await res.json();
+  // Flu endpoint returns regional outbreak data (not a daypart forecast).
+  // Map color → standard risk category and fill all 14 daypart slots uniformly.
+  const color = (data.fluOutbreakColor?.[0] ?? "").toLowerCase();
+  const category = FLU_COLOR_TO_CATEGORY[color] ?? null;
+  const colorIndex = ["green", "yellow", "orange", "red"].indexOf(color);
+  const indexValue = colorIndex >= 0 ? colorIndex + 1 : null;
+  return {
+    daypartName: Array(14).fill(null),
+    index: Array(14).fill(indexValue),
+    category: Array(14).fill(category),
+  };
+}
+
+
+export async function getMosquitoIndex(lat: number, lon: number): Promise<BodyIndex> {
+  const res = await fetch(
+    url("/v2/indices/mosquito/daypart/7day", {
+      geocode: `${lat},${lon}`,
+      language: "en-US",
+    }),
+    { next: { revalidate: 3600 } }
+  );
+  if (!res.ok) throw new Error(`TWC mosquito index failed: ${res.status}`);
+  const data = await res.json();
+  // mosquitoIndex12hour is an array of day objects, each containing arrays of values
+  const days: Array<Record<string, unknown[]>> = data.mosquitoIndex12hour ?? [];
+  return {
+    daypartName: days.flatMap((d) => (d.daypartName ?? []) as (string | null)[]),
+    index: days.flatMap((d) => (d.mosquitoIndex ?? []) as (number | null)[]),
+    category: days.flatMap((d) => (d.mosquitoCategory ?? []) as (string | null)[]),
+  };
+}
+
 export async function getDrySkinIndex(lat: number, lon: number): Promise<BodyIndex> {
   const res = await fetch(
     url("/v2/indices/drySkin/daypart/7day", {

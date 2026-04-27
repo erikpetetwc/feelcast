@@ -35,6 +35,8 @@ interface WeatherData {
   breathing: { index: (number | null)[]; category: (string | null)[] } | null;
   pollen: { index: (number | null)[]; category: (string | null)[] } | null;
   drySkin: { index: (number | null)[]; category: (string | null)[] } | null;
+  flu: { index: (number | null)[]; category: (string | null)[] } | null;
+  mosquito: { index: (number | null)[]; category: (string | null)[] } | null;
   hourly: { validTimeLocal: string[]; temperature: (number | null)[]; uvIndex: (number | null)[]; precipChance: (number | null)[] } | null;
   airQuality: { airQualityIndex: number | null; category: string | null; primaryPollutant: string | null } | null;
 }
@@ -297,6 +299,10 @@ export default function DashboardPage() {
         uvIndex: weather.obs?.uvIndex ?? null,
         temperature: weather.obs?.temperature ?? null,
         humidity: weather.obs?.relativeHumidity ?? null,
+        fluCategory: weather.flu?.category?.[0] ?? null,
+        fluIndex: weather.flu?.index?.[0] ?? null,
+        mosquitoCategory: weather.mosquito?.category?.[0] ?? null,
+        mosquitoIndex: weather.mosquito?.index?.[0] ?? null,
       })
     : [];
 
@@ -318,6 +324,10 @@ export default function DashboardPage() {
           breathingIndex: weather.breathing?.index?.[dpIdx] ?? null,
           pollenCategory: weather.pollen?.category?.[dpIdx] ?? null,
           pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
+          fluCategory: weather.flu?.category?.[dpIdx] ?? null,
+          fluIndex: weather.flu?.index?.[dpIdx] ?? null,
+          mosquitoCategory: weather.mosquito?.category?.[dpIdx] ?? null,
+          mosquitoIndex: weather.mosquito?.index?.[dpIdx] ?? null,
         });
         const dayRisks = conditions && conditions.length > 0
           ? personalizeRisksBySymptoms(conditions, genericDay, SYMPTOM_BY_ID)
@@ -448,6 +458,10 @@ export default function DashboardPage() {
                         breathingIndex: weather.breathing?.index?.[dpIdx] ?? null,
                         pollenCategory: weather.pollen?.category?.[dpIdx] ?? null,
                         pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
+                        fluCategory: weather.flu?.category?.[dpIdx] ?? null,
+                        fluIndex: weather.flu?.index?.[dpIdx] ?? null,
+                        mosquitoCategory: weather.mosquito?.category?.[dpIdx] ?? null,
+                        mosquitoIndex: weather.mosquito?.index?.[dpIdx] ?? null,
                       });
                       const dayRisks = conditions && conditions.length > 0
                         ? personalizeRisksBySymptoms(conditions, genericDay, SYMPTOM_BY_ID)
@@ -526,6 +540,10 @@ export default function DashboardPage() {
                       breathingIndex: weather.breathing?.index?.[dpIdx] ?? null,
                       pollenCategory: weather.pollen?.category?.[dpIdx] ?? null,
                       pollenIndex: weather.pollen?.index?.[dpIdx] ?? null,
+                      fluCategory: weather.flu?.category?.[dpIdx] ?? null,
+                      fluIndex: weather.flu?.index?.[dpIdx] ?? null,
+                      mosquitoCategory: weather.mosquito?.category?.[dpIdx] ?? null,
+                      mosquitoIndex: weather.mosquito?.index?.[dpIdx] ?? null,
                     });
                     const dayRisks = conditions && conditions.length > 0
                       ? personalizeRisksBySymptoms(conditions, genericDay, SYMPTOM_BY_ID)

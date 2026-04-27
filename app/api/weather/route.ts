@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getCurrentObs, getDailyForecast, getAchePainIndex, getBreathingIndex, getPollenIndex, getHourlyForecast, getAirQuality, getDrySkinIndex } from "@/lib/twc";
+import { getCurrentObs, getDailyForecast, getAchePainIndex, getBreathingIndex, getPollenIndex, getHourlyForecast, getAirQuality, getDrySkinIndex, getFluIndex, getMosquitoIndex } from "@/lib/twc";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "lat and lon required" }, { status: 400 });
   }
 
-  const [obs, forecast, achePain, breathing, pollen, hourly, airQuality, drySkin] = await Promise.allSettled([
+  const [obs, forecast, achePain, breathing, pollen, hourly, airQuality, drySkin, flu, mosquito] = await Promise.allSettled([
     getCurrentObs(lat, lon),
     getDailyForecast(lat, lon),
     getAchePainIndex(lat, lon),
@@ -18,10 +18,14 @@ export async function GET(req: NextRequest) {
     getHourlyForecast(lat, lon),
     getAirQuality(lat, lon),
     getDrySkinIndex(lat, lon),
+    getFluIndex(lat, lon),
+    getMosquitoIndex(lat, lon),
   ]);
 
   if (hourly.status === "rejected") console.error("[weather] hourly:", (hourly.reason as Error)?.message ?? hourly.reason);
   if (airQuality.status === "rejected") console.error("[weather] airQuality:", (airQuality.reason as Error)?.message ?? airQuality.reason);
+  if (flu.status === "rejected") console.error("[weather] flu:", (flu.reason as Error)?.message ?? flu.reason);
+  if (mosquito.status === "rejected") console.error("[weather] mosquito:", (mosquito.reason as Error)?.message ?? mosquito.reason);
 
   return NextResponse.json({
     obs: obs.status === "fulfilled" ? obs.value : null,
@@ -32,5 +36,7 @@ export async function GET(req: NextRequest) {
     hourly: hourly.status === "fulfilled" ? hourly.value : null,
     airQuality: airQuality.status === "fulfilled" ? airQuality.value : null,
     drySkin: drySkin.status === "fulfilled" ? drySkin.value : null,
+    flu: flu.status === "fulfilled" ? flu.value : null,
+    mosquito: mosquito.status === "fulfilled" ? mosquito.value : null,
   });
 }
