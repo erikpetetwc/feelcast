@@ -187,6 +187,7 @@ export async function getAirQuality(lat: number, lon: number): Promise<AirQualit
     url("/v3/wx/globalAirQuality", {
       geocode: `${lat},${lon}`,
       language: "en-US",
+      units: "e",
     }),
     { next: { revalidate: 3600 } }
   );
