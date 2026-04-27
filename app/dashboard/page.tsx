@@ -47,8 +47,6 @@ function HourlyFeelCard({ hourly, airQuality }: {
 }) {
   const nowHour = new Date().getHours();
   const aqi = airQuality?.airQualityIndex;
-  const aqiRisk = aqiToRisk(aqi);
-  const aqiBadgeClass = { LOW: "bg-green-100 text-green-700", MODERATE: "bg-yellow-100 text-yellow-700", HIGH: "bg-orange-100 text-orange-700", "VERY HIGH": "bg-red-100 text-red-700" }[aqiRisk];
 
   const slots = hourly.validTimeLocal
     .map((t, i) => ({ t, i, hour: parseInt(t.slice(11, 13), 10) }))
@@ -64,17 +62,7 @@ function HourlyFeelCard({ hourly, airQuality }: {
   return (
     <Card>
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base">Today by the Hour</CardTitle>
-          {aqi != null && (
-            <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", aqiBadgeClass)}>
-              AQI {aqi} · {aqiLabel(aqi)}
-            </span>
-          )}
-        </div>
-        {airQuality?.primaryPollutant && (
-          <p className="text-xs text-muted-foreground">Primary pollutant: {airQuality.primaryPollutant}</p>
-        )}
+        <CardTitle className="text-base">Today by the Hour</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="flex gap-3 overflow-x-auto pb-1 -mx-1 px-1">
@@ -423,6 +411,7 @@ export default function DashboardPage() {
               temperature={weather.obs?.temperature}
               condition={weather.obs?.wxPhraseLong}
               personalized={!!todayLog || (!!conditions && conditions.length > 0)}
+              airQuality={weather.airQuality}
             />
 
             {weather.hourly && weather.hourly.validTimeLocal.length > 0 && (

@@ -1,7 +1,29 @@
 "use client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RiskBadge } from "@/components/RiskBadge";
-import { type BodyRisk, type RiskLevel } from "@/lib/body-score";
+import { type BodyRisk, type RiskLevel, aqiToRisk } from "@/lib/body-score";
+import { cn } from "@/lib/utils";
+
+const POLLUTANT_NAMES: Record<string, string> = {
+  "O3": "Ozone",
+  "PM2.5": "Fine Particles (PM2.5)",
+  "PM10": "Coarse Particles (PM10)",
+  "NO2": "Nitrogen Dioxide",
+  "CO": "Carbon Monoxide",
+  "SO2": "Sulfur Dioxide",
+  "NOx": "Nitrogen Oxides",
+};
+
+function pollutantLabel(raw: string | null | undefined): string {
+  if (!raw) return "";
+  return POLLUTANT_NAMES[raw] ?? raw;
+}
+
+interface AirQualityInfo {
+  airQualityIndex: number | null;
+  category: string | null;
+  primaryPollutant: string | null;
+}
 
 interface Props {
   risks: BodyRisk[];
@@ -9,11 +31,12 @@ interface Props {
   temperature?: number | null;
   condition?: string | null;
   personalized?: boolean;
+  airQuality?: AirQualityInfo | null;
 }
 
 const RISK_LEVELS: RiskLevel[] = ["VERY HIGH", "HIGH", "MODERATE", "LOW"];
 
-export function BodyWeatherCard({ risks, locationLabel, temperature, condition, personalized }: Props) {
+export function BodyWeatherCard({ risks, locationLabel, temperature, condition, personalized, airQuality }: Props) {
   const elevated = risks.filter((r) => r.risk !== "LOW");
   const low = risks.filter((r) => r.risk === "LOW");
   const groups = RISK_LEVELS
@@ -36,6 +59,26 @@ export function BodyWeatherCard({ risks, locationLabel, temperature, condition, 
             {condition}
           </p>
         )}
+        {airQuality?.airQualityIndex != null && (() => {
+          const aqi = airQuality.airQualityIndex!;
+          const risk = aqiToRisk(aqi);
+          const badgeClass = { LOW: "bg-green-100 text-green-700", MODERATE: "bg-yellow-100 text-yellow-700", HIGH: "bg-orange-100 text-orange-700", "VERY HIGH": "bg-red-100 text-red-700" }[risk];
+          return (
+            <div className="mt-1 space-y-0.5">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs text-muted-foreground">💨 Air Quality Index (AQI)</span>
+                <span className={cn("text-xs font-semibold px-2 py-0.5 rounded-full", badgeClass)}>
+                  {aqi} · {airQuality.category ?? risk}
+                </span>
+              </div>
+              {airQuality.primaryPollutant && (
+                <p className="text-xs text-muted-foreground pl-0.5">
+                  Primary pollutant: {pollutantLabel(airQuality.primaryPollutant)}
+                </p>
+              )}
+            </div>
+          );
+        })()}
       </CardHeader>
       <CardContent>
         {elevated.length === 0 && !personalized ? (
