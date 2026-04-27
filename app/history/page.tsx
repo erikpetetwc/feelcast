@@ -237,6 +237,7 @@ export default function HistoryPage() {
 
             {/* Legend */}
             <div className="flex items-center gap-3 mt-4 flex-wrap">
+              <span className="text-xs text-muted-foreground">Tap any colored day to see details.</span>
               <span className="text-xs text-muted-foreground">Feel rating:</span>
               {[
                 { bg: "bg-green-200", label: "Good" },
